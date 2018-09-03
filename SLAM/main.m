@@ -30,9 +30,12 @@ addpath('./utils')
 
 format compact
 configfile;  %% the file is used to configure the ekf-slam, make sure importing successfully
+
 fig = figs_inialization(map_dir, MAP_H, MAP_W);
 xlabel('metres'), ylabel('metres')
 set(fig, 'name', 'EKF-SLAM Simulator')
+set(fig,'units','points','position',[100,100,800,800])
+
 h= setup_animations();
 
 veh= [4, 4 -4, -4; WHEELBASE/2, -WHEELBASE/2, -WHEELBASE/2,  WHEELBASE/2]; % vehicle animation
@@ -47,9 +50,8 @@ P= zeros(3);
 xtrue = [0; -160; 0];
 x = [0; -160; 0];
 
-% tracking objects
-x_track_1 = [];
-track_1 = [0.8*MAP_W, 0;-0.8*MAP_W, 0; -0.8*MAP_W, -0.8*MAP_H; 0.8*MAP_W, -0.8*MAP_H; ]';
+% set tracked objects
+track_objs;
 
 % initialise other variables and constants
 dt= DT_CONTROLS; % change in time between predicts
@@ -65,11 +67,24 @@ if SWITCH_SEED_RANDOM, randn('state',SWITCH_SEED_RANDOM), end
 % main loop 
 while iwp ~= 0
     
+    % tracking objects 
+    for j=1:N_track_obj
+        [track_obj(j).G, track_obj(j).iwp]= compute_steering(track_obj(j).x, track_obj(j).wp, track_obj(j).iwp, AT_WAYPOINT, track_obj(j).G, RATEG, MAXG, dt);
+        if track_obj(j).iwp==0 & track_obj(j).LOOP > 1, track_obj(j).iwp = 1; track_obj(j).LOOP = track_obj(j).LOOP ; end % perform loops: if final waypoint reached, go back to first
+        track_obj(j).x= vehicle_model(track_obj(j).x,  track_obj(j).V , track_obj(j).G, WHEELBASE,dt);
+        % plots
+        xxtt = transformtoglobal(track_obj(j).size, track_obj(j).x);
+        set(track_obj(j).H.xt_t1, 'xdata', xxtt(1,:), 'ydata', xxtt(2,:))
+    end
+
+         
+    
     % compute true data
     [G,iwp]= compute_steering(xtrue, wp, iwp, AT_WAYPOINT, G, RATEG, MAXG, dt);
     if iwp==0 & NUMBER_LOOPS > 1, iwp=1; NUMBER_LOOPS= NUMBER_LOOPS-1; end % perform loops: if final waypoint reached, go back to first
     xtrue= vehicle_model(xtrue, V,G, WHEELBASE,dt);
-    [Vn,Gn]= add_control_noise(V,G,Q, SWITCH_CONTROL_NOISE);
+    [Vn,Gn]= add_control_noise(V,G,Q, SWITCH_CONTROL_NOISE);    
+    
     
     % EKF predict step
     [x,P]= predict (x,P, Vn,Gn,QE, WHEELBASE,dt);
@@ -131,8 +146,7 @@ set(h.pth, 'xdata', data.path(1,:), 'ydata', data.path(2,:))
 
 end
 %
-%
-
+%% 
 function p= make_laser_lines (rb,xv)
 % compute set of line segments for laser range-bearing measurements
 if isempty(rb), p=[]; return, end
@@ -207,14 +221,16 @@ data.state(1).P= diag(P);
 end
 %
 %
+
+
 function h= setup_animations()
 x_s = 0;
-h.xt= patch(0,x_s,'b','erasemode','xor'); % vehicle true
-h.xv= patch(0,x_s,'r','erasemode','xor'); % vehicle estimate
-h.pth= plot(0,x_s,'k.','markersize',2,'erasemode','background'); % vehicle path estimate
-h.obs= plot(0,x_s,'r','erasemode','xor'); % observations
-h.xf= plot(0,0,'r+','erasemode','xor'); % estimated features
-h.cov= plot(0,0,'r','erasemode','xor'); % covariance ellipses
+h.xt= patch(0,x_s,'b'); % vehicle true
+h.xv= patch(0,x_s,'r'); % vehicle estimate
+h.pth= plot(0,x_s,'k.','markersize',2);% ,'erasemode','background'); % vehicle path estimate
+h.obs= plot(0,x_s,'r');%,'erasemode','xor'); % observations
+h.xf= plot(0,0,'r+');%,'erasemode','xor'); % estimated features
+h.cov= plot(0,0,'r');%,'erasemode','xor'); % covariance ellipses
 end
 
 %
@@ -229,6 +245,8 @@ assert(size(lm,2)>=10, 'The number of landmarks should be over 10');
 assert(size(wp,2)>=4,'The number of way points shold be over 4'); 
 
 fig = figure;
+%set(gcf, 'PaperSize', [4 2]);
+
 axis([-W, W, -H, H]);
 % plotting the robot maps
 lm = plot_mapping(W,H,C);
@@ -238,7 +256,7 @@ wp=[0,-0.8*H;  0.15*W, -0.8*H; 0.3*W, -0.4*H; 0.2*W, -0.15*H; -0.75*W, -0.15*H; 
     -0.75*W, 0.77*H; -0.15*W, 0.77*H;  -0.35*W, 0.4*H; -0.15*W, 0.08*H;
      0.75*W, 0.08*H; 0.75*W, -0.15*H; -0.2*W, -0.15*H;  -0.35*W, - 0.4*H;
       -0.15*W, - 0.8*H; 0,-0.8*H ];
-wp=wp'
+wp=wp';
 plot(wp(1,:),wp(2,:), 'g', wp(1,:),wp(2,:),'g.')
 hold on
 plot(lm(1,:),lm(2,:),'b*')
@@ -255,203 +273,4 @@ p(2,:)= [a(2,:)+x(2) NaN];
 p(1,:)= [a(1,:)+x(1) NaN];
 end
 
-%
-%
-function lm=plot_mapping(W,H,C)
 
-% plotting the surroundings
-x_1 = [];
-y_1 = [];
-num = 6;
-
-wall_ratio = 0.15;
-x1 = [-W, W, W, -W];
-y1 = [ H, H, H - wall_ratio*H, H - wall_ratio*H];
-patch(x1, y1, C);
-
-x1 = [-W, W, W, -W];
-y1 = [ -H, -H, -H + wall_ratio*H, -H + wall_ratio*H];
-patch(x1, y1, C);
-
-x1 = [-W, -W, -W+wall_ratio*W, -W+wall_ratio*W];
-y1 = [ H,  -H, -H  ,  H ];
-patch(x1, y1, C);
-
-x1 = [W, W, W-wall_ratio*W, W-wall_ratio*W];
-y1 = [ H,  -H, -H,  H ];
-patch(x1, y1, C);
-
-% plotting inland maps
-x1 = [ 0.3*W, 0.6*W, 0.6*W, 0.3*W, 0.4*W];
-y1 = [ 0.6*H, 0.6*H, 0.2*H, 0.2*H, 0.4*H];
-patch(x1, y1, C);
-
-% generate landmarks
-len = length(x1);
-for i = 1:len
-    if i==len
-        x_inter = linspace(x1(i), x1(1), num);
-        y_inter = linspace(y1(i), y1(1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    else
-        x_inter = linspace(x1(i), x1(i+1), num);
-        y_inter = linspace(y1(i), y1(i+1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    end
-end
-
- 
-x1 = [ 0.3*W, 0.6*W, 0.6*W, 0.3*W, 0.4*W];
-y1 = -[ 0.6*H, 0.6*H, 0.2*H, 0.2*H, 0.4*H];
-patch(x1, y1, C);
-
-% generate landmarks
-len = length(x1);
-for i = 1:len
-    if i==len
-        x_inter = linspace(x1(i), x1(1), num);
-        y_inter = linspace(y1(i), y1(1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    else
-        x_inter = linspace(x1(i), x1(i+1), num);
-        y_inter = linspace(y1(i), y1(i+1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    end
-end
-
-
-x1 = -[ 0.3*W, 0.6*W, 0.6*W, 0.3*W, 0.4*W];
-y1 = [ 0.6*H, 0.6*H, 0.2*H, 0.2*H, 0.4*H];
-patch(x1, y1, C);
-% generate landmarks
-len = length(x1);
-for i = 1:len
-    if i==len
-        x_inter = linspace(x1(i), x1(1), num);
-        y_inter = linspace(y1(i), y1(1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    else
-        x_inter = linspace(x1(i), x1(i+1), num);
-        y_inter = linspace(y1(i), y1(i+1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    end
-end
-
-
-x1 = -[ 0.3*W, 0.6*W, 0.6*W, 0.3*W, 0.4*W];
-y1 = -[ 0.6*H, 0.6*H, 0.2*H, 0.2*H, 0.4*H];
-patch(x1, y1, C);
-len = length(x1);
-% generate landmarks
-len = length(x1);
-for i = 1:len
-    if i==len
-        x_inter = linspace(x1(i), x1(1), num);
-        y_inter = linspace(y1(i), y1(1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    else
-        x_inter = linspace(x1(i), x1(i+1), num);
-        y_inter = linspace(y1(i), y1(i+1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    end
-end
-
-
-% 
-x1 = [ 0.25*W, 0.15*W, -0.15*W, -0.25*W, -0.15*W, 0.15*W];
-y1 = [ 0.4*H, 0.6*H, 0.6*H, 0.4*H, 0.2*H, 0.2*H];
-patch(x1, y1, C);
-% generate landmarks
-len = length(x1);
-for i = 1:len
-    if i==len
-        x_inter = linspace(x1(i), x1(1), num);
-        y_inter = linspace(y1(i), y1(1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    else
-        x_inter = linspace(x1(i), x1(i+1), num);
-        y_inter = linspace(y1(i), y1(i+1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    end
-end
-
-
-% 
-x1 = [ 0.25*W, 0.15*W, -0.15*W, -0.25*W, -0.15*W, 0.15*W];
-y1 = -[ 0.4*H, 0.6*H, 0.6*H, 0.4*H, 0.2*H, 0.2*H];
-patch(x1, y1, C);
-% generate landmarks
-len = length(x1);
-for i = 1:len
-    if i==len
-        x_inter = linspace(x1(i), x1(1), num);
-        y_inter = linspace(y1(i), y1(1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    else
-        x_inter = linspace(x1(i), x1(i+1), num);
-        y_inter = linspace(y1(i), y1(i+1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    end
-end
-
-
-x1 = [0.6*W, 0.6*W, -0.6*W, -0.6*W];
-y1 = [ 0.01*H, -0.01*H, -0.01*H, 0.01*H];
-patch(x1, y1, C);
-% generate landmarks
-len = length(x1);
-for i = 1:len
-    if i==len
-        x_inter = linspace(x1(i), x1(1), num);
-        y_inter = linspace(y1(i), y1(1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    else
-        x_inter = linspace(x1(i), x1(i+1), num);
-        y_inter = linspace(y1(i), y1(i+1), num);
-        x_inter(num) = [];
-        y_inter(num) = [];
-        x_1 = [x_1, x_inter];
-        y_1 = [y_1, y_inter];
-    end
-end
-lm = [x_1;y_1]
-end

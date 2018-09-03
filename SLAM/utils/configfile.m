@@ -3,7 +3,7 @@
 %%% See ekfslam_sim.m for more information
 
 % control parameters
-V= 4; % m/s
+V= 5; % m/s
 MAXG= 30*pi/180; % radians, maximum steering angle (-MAXG < g < MAXG)
 RATEG= 20*pi/180; % rad/s, maximum rate of change in steer angle
 WHEELBASE= 4; % metres, vehicle wheel-base
