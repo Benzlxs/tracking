@@ -8,7 +8,7 @@ track_obj(j).wp = [0.7*MAP_W, -0.1*MAP_H;-0.7*MAP_W, -0.1*MAP_H; -0.7*MAP_W, -0.
 track_obj(j).iwp = 1;
 track_obj(j).H = setup_tracking_animations();
 track_obj(j).G = 0;
-track_obj(j).V = 10;
+track_obj(j).V = 3;
 track_obj(j).LOOP = 4;
 track_obj(j).size = [lenght, lenght, -lenght, -lenght; width/2, -width/2, -width/2,  width/2]; % vehicle animation
 %track_obj(1).data=
@@ -41,7 +41,9 @@ track_obj(j).V = 2;
 track_obj(j).LOOP = 4;
 track_obj(j).size = [edge, -edge, -edge; 0, edge/2, -edge/2]; % vehicle animation
 
-N_track_obj = 3;
+%
+N_track_obj = length(track_obj);
+tag_trk_obj = 1:N_track_obj
 
 
 

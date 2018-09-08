@@ -32,42 +32,20 @@ format compact
 configfile;  %% the file is used to configure the ekf-slam, make sure importing successfully
 
 fig = figs_inialization(map_dir, MAP_H, MAP_W);
-xlabel('metres'), ylabel('metres')
-set(fig, 'name', 'EKF-SLAM Simulator')
-set(fig,'units','points','position',[100,100,800,800])
+
 
 h= setup_animations();
-
-veh= [4, 4 -4, -4; WHEELBASE/2, -WHEELBASE/2, -WHEELBASE/2,  WHEELBASE/2]; % vehicle animation
-
-plines=[]; % for laser line animation
-pcount=0;
-
-% initialise states
-%xtrue= zeros(3,1);
-%x= zeros(3,1);
-P= zeros(3);
-xtrue = [0; -160; 0];
-x = [0; -160; 0];
 
 % set tracked objects
 track_objs;
 
-% initialise other variables and constants
-dt= DT_CONTROLS; % change in time between predicts
-dtsum= 0; % change in time since last observation
-ftag= 1:size(lm,2); % identifier for each landmark
-da_table= zeros(1,size(lm,2)); % data association table 
-iwp= 1; % index to first waypoint 
-G= 0; % initial steer angle
-data= initialise_store(x,P,x); % stored data for off-line
-QE= Q; RE= R; if SWITCH_INFLATE_NOISE, QE= 2*Q; RE= 8*R; end % inflate estimated noises (ie, add stabilising noise)
-if SWITCH_SEED_RANDOM, randn('state',SWITCH_SEED_RANDOM), end
+% initialise states
+initialization_params;
 
 % main loop 
 while iwp ~= 0
     
-    % tracking objects 
+    %% tracking objects 
     for j=1:N_track_obj
         [track_obj(j).G, track_obj(j).iwp]= compute_steering(track_obj(j).x, track_obj(j).wp, track_obj(j).iwp, AT_WAYPOINT, track_obj(j).G, RATEG, MAXG, dt);
         if track_obj(j).iwp==0 & track_obj(j).LOOP > 1, track_obj(j).iwp = 1; track_obj(j).LOOP = track_obj(j).LOOP ; end % perform loops: if final waypoint reached, go back to first
@@ -77,24 +55,32 @@ while iwp ~= 0
         set(track_obj(j).H.xt_t1, 'xdata', xxtt(1,:), 'ydata', xxtt(2,:))
     end
 
-         
-    
-    % compute true data
+    %% compute true data
     [G,iwp]= compute_steering(xtrue, wp, iwp, AT_WAYPOINT, G, RATEG, MAXG, dt);
     if iwp==0 & NUMBER_LOOPS > 1, iwp=1; NUMBER_LOOPS= NUMBER_LOOPS-1; end % perform loops: if final waypoint reached, go back to first
     xtrue= vehicle_model(xtrue, V,G, WHEELBASE,dt);
     [Vn,Gn]= add_control_noise(V,G,Q, SWITCH_CONTROL_NOISE);    
     
     
-    % EKF predict step
+    %% EKF predict step
     [x,P]= predict (x,P, Vn,Gn,QE, WHEELBASE,dt);
+    
+    %% prediction of moving objects
+    n_obj = size(x_trk,1);
+    for i =1:n_obj
+        %TO-DO: predict moving object one by one
+        [x_temp,P_temp]= predict_moving_object (x_trk(i,:), squeeze(P_trk(i,:,:)), Q_trk, dt);  
+        x_trk(i,:) = x_temp;
+        P_trk(i,:,:) = P_temp; 
+    end
     
     % if heading known, observe heading
     [x,P]= observe_heading(x,P, xtrue(3), SWITCH_HEADING_KNOWN);
     
-    % EKF update step
+    %% EKF update step
     dtsum= dtsum + dt;
     if dtsum >= DT_OBSERVE
+        %% SLAM system
         dtsum= 0;
         [z,ftag_visible]= get_observations(xtrue, lm, ftag, MAX_RANGE);
         z= add_observation_noise(z,R, SWITCH_SENSOR_NOISE);
@@ -111,8 +97,30 @@ while iwp ~= 0
             [x,P]= update(x,P,zf,RE,idf, SWITCH_BATCH_UPDATE); 
         end
         [x,P]= augment(x,P, zn,RE); 
+        
+        %% tracking system
+        for k = 1:n_obj
+            count_trk(k) = count_trk(k) + 1;
+        end
+        % getting the measurements from moving target
+        [z_trk_obj, ind_trk_z] = get_observations_tracking_obj(xtrue, track_obj, tag_trk_obj, MAX_RANGE);
+        z_trk_obj = add_observation_noise(z_trk_obj, R, SWITCH_SENSOR_NOISE); 
+
+        % data association
+        [zf_trk , idf_trk, zn_trk, zn_ind]= data_associate_tracking_obj(x(1:3), x_trk, P_trk, z_trk_obj, ind_trk_z, RE, GATE_REJECT, GATE_AUGMENT); 
+        
+        for k = 1:size(idf_trk)
+            count_trk(idf_trk(k)) = 0 ; 
+        end
+        
+        % update
+        [x_trk , P_trk]= update_tracking_obj(x(1:3), x_trk , P_trk, zf_trk, RE, idf_trk);
+        % augmentation and deletion
+        [x_trk , P_trk, count_trk, ind_trk_obj]= augment_tracking_obj(x(1:3), P(1:3,1:3), x_trk , P_trk, zn_trk, R_trk, count_trk, zn_ind, ind_trk_obj); 
+        [x_trk , P_trk, count_trk, ind_trk_obj] = del_tracking_obj(x_trk , P_trk, count_trk, num_del, ind_trk_obj);
     end
     
+    %% plotting
     % offline data store
     data= store_data(data, x, P, xtrue);
     
@@ -122,6 +130,18 @@ while iwp ~= 0
     set(h.xt, 'xdata', xt(1,:), 'ydata', xt(2,:))
     set(h.xv, 'xdata', xv(1,:), 'ydata', xv(2,:))
     set(h.xf, 'xdata', x(4:2:end), 'ydata', x(5:2:end))
+    
+    % plotting tracked objects
+    n_obj = size(x_trk,1);
+    for i =1:n_obj
+        %TO-DO: predict moving object one by one
+        ij = ind_trk_obj(i);
+        x_obj=transformtoglobal(track_obj(ij).size, x_trk(i,:));
+        set(track_obj(ij).H.xv_t1,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
+        p_conv= make_covariance_ellipses_tracking_obj(x_trk(i,:), squeeze(P_trk(i,:,:)));
+        set(track_obj(ij).H.cov_t1,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
+    end    
+    
     ptmp= make_covariance_ellipses(x(1:3),P(1:3,1:3));
     pcov(:,1:size(ptmp,2))= ptmp;
     if dtsum==0
@@ -184,6 +204,22 @@ end
 
 %
 %
+function p= make_covariance_ellipses_tracking_obj(x,P)
+% compute ellipses for plotting state covariances
+N= 10;
+inc= 2*pi/N;
+phi= 0:inc:2*pi;
+
+
+p= zeros (2,1*(N+2));
+
+ii=1:N+2;
+p(:,ii)= make_ellipse(x(1:2), P(1:2,1:2), 2, phi);
+
+end
+
+%
+%
 function data= finalise_data(data)
 % offline storage finalisation
 data.path= data.path(:,1:data.i);
@@ -210,17 +246,7 @@ end
 
 %
 %
-function data= initialise_store(x,P, xtrue)
-% offline storage initialisation
-data.i=1;
-data.path= x;
-data.true= xtrue;
-data.state(1).x= x;
-%data.state(1).P= P;
-data.state(1).P= diag(P);
-end
-%
-%
+
 
 
 function h= setup_animations()
@@ -238,7 +264,8 @@ end
 function fig = figs_inialization(map_dir, map_h, map_w)
 % load the road point and landmarks
 global wp lm;
-W = map_w, H = map_h; 
+W = map_w;
+H = map_h; 
 C = [0.5, 0.5, 0.5];  % color for map
 load(map_dir);
 assert(size(lm,2)>=10, 'The number of landmarks should be over 10');
@@ -260,6 +287,11 @@ wp=wp';
 plot(wp(1,:),wp(2,:), 'g', wp(1,:),wp(2,:),'g.')
 hold on
 plot(lm(1,:),lm(2,:),'b*')
+
+xlabel('metres'), ylabel('metres')
+set(fig, 'name', 'EKF-SLAM Simulator')
+set(fig,'units','points','position',[100,100,800,800])
+
 end
 
 %
