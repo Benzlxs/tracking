@@ -107,10 +107,11 @@ while iwp ~= 0
         z_trk_obj = add_observation_noise(z_trk_obj, R, SWITCH_SENSOR_NOISE); 
 
         % data association
-        [zf_trk , idf_trk, zn_trk, zn_ind]= data_associate_tracking_obj(x(1:3), x_trk, P_trk, z_trk_obj, ind_trk_z, RE, GATE_REJECT, GATE_AUGMENT); 
+        [zf_trk , idf_trk, zn_trk, zn_ind]= data_associate_tracking_obj(x(1:3), x_trk, P_trk, z_trk_obj, ind_trk_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK); 
         
-        for k = 1:size(idf_trk)
+        for k = 1:size(idf_trk,2)
             count_trk(idf_trk(k)) = 0 ; 
+            count_trk
         end
         
         % update
@@ -137,9 +138,18 @@ while iwp ~= 0
         %TO-DO: predict moving object one by one
         ij = ind_trk_obj(i);
         x_obj=transformtoglobal(track_obj(ij).size, x_trk(i,:));
-        set(track_obj(ij).H.xv_t1,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
+        %set(track_obj(ij).H.xv_t1,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
+        set( fig_hs(i).car,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
         p_conv= make_covariance_ellipses_tracking_obj(x_trk(i,:), squeeze(P_trk(i,:,:)));
-        set(track_obj(ij).H.cov_t1,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
+        %set(track_obj(ij).H.cov_t1,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
+        set( fig_hs(i).elliphse,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
+        
+        % vanish the deleted objects 
+        %vanish_img(track_obj, ind_trk_obj, count_trk,num_del )
+        if count_trk(i) >= num_del-4
+            set( fig_hs(i).car,'xdata',0, 'ydata', 0);
+            set( fig_hs(i).elliphse,'xdata', 0, 'ydata',0);
+        end
     end    
     
     ptmp= make_covariance_ellipses(x(1:3),P(1:3,1:3));
@@ -153,6 +163,10 @@ while iwp ~= 0
         end
         if ~isempty(z)
             plines= make_laser_lines (z,x(1:3));
+            if ~isempty(z_trk_obj)
+                pp = make_laser_lines (z_trk_obj,x(1:3));
+                plines = [plines pp];
+            end
             set(h.obs, 'xdata', plines(1,:), 'ydata', plines(2,:))
             pcov= make_covariance_ellipses(x,P);
         end
@@ -167,6 +181,21 @@ set(h.pth, 'xdata', data.path(1,:), 'ydata', data.path(2,:))
 end
 %
 %% 
+function []= vanish_img(track_obj, ind_trk_obj, count_trk,num_del)
+% disvisable the remained image
+
+num_obj = size(ind_trk_obj,1);
+for i = 1:num_obj
+    if count_trk(i) >= num_del-3
+        ij = ind_trk_obj(i);
+        set(track_obj(ij).H.xv_t1, 'xdata', 0, 'ydata', 0);
+        set(track_obj(ij).H.cov_t1,'xdata', 0, 'ydata', 0);
+    end
+end
+
+end
+
+
 function p= make_laser_lines (rb,xv)
 % compute set of line segments for laser range-bearing measurements
 if isempty(rb), p=[]; return, end

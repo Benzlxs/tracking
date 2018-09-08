@@ -11,24 +11,24 @@ x = [0; -160; 0];
 x_trk = [];  % will be n*m, n is the number of tracked objects, m is the number of state
 P_trk = [];  % will be the n*m*m,  
 % acceleration of velocity and angle rate
-acc_noise= 0.2; % m^2/s
-ang_velo= (2.0*pi/180); % radians
+acc_noise= 1.2; % m^2/s
+ang_velo= (12.0*pi/180); % radians
 Q_trk = [ 0,   0,     0,    0;
           0,   0,     0,    0;
           0,   0, sigmaG^2, 0;
           0,   0,     0, ang_velo^2] ; 
 
       
-R_trk = [0.1,  0;
-          0 , 0.1] ;      % uncertainty about velocity and angle
+R_trk = [1.5,  0;
+          0 , 1.5] ;      % uncertainty about velocity and angle
       
 count_trk = [];   % n*1, to count how long the moving objects have not been observed
 
 ind_trk_obj = [];  % n*1 to record the index of real objects
 
-GATE_REJECT_TRK = 100;
+GATE_REJECT_TRK = 2;
 
-GATE_AUGMENT_TRK = 160;
+GATE_AUGMENT_TRK = 4;
 % num to delete the object
 num_del = 50;
 

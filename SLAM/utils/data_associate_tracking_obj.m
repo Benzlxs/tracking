@@ -56,11 +56,17 @@ function [nis, nd]= compute_association_tracking_obj(rob_x, obj_x, P, z, R)
 %
 % return normalised innovation squared (ie, Mahalanobis distance) and normalised distance
 [zp,H]= observe_model_tracking_obj(rob_x , obj_x);
-H(2,:) = [];
+%H(2,:) = [];
 v= z-zp; 
-v(2) = [];
-% v(2)= pi_to_pi(v(2));
-S= H*P*H' + R(1,1);
+%v(2) = [];
+v(2)= pi_to_pi(v(2));
 
-nis= v'*inv(S)*v;
-nd= nis + log(det(S));
+
+nd = abs(v(1));   % distance difference
+nis  = (abs(v(1)) + abs(v(2)))/2;  % angle difference
+%S= H*P*H' + R(1,1);
+% 
+% S= H*P*H' + R;
+% 
+% nis= v'*inv(S)*v;
+% nd= nis + log(det(S));

@@ -102,7 +102,7 @@ while iwp ~= 0
         if SWITCH_ASSOCIATION_KNOWN == 1
             [zf,idf,zn, da_table]= data_associate_known(x,z,ftag_visible, da_table);
         else
-            [zf,idf, zn]= data_associate(x,P,z,RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK); 
+            [zf,idf, zn]= data_associate(x,P,z,RE, GATE_REJECT, GATE_AUGMENT); 
         end
 
         if SWITCH_USE_IEKF == 1

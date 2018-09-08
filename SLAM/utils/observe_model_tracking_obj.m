@@ -35,8 +35,8 @@ yd2= dy/d2;
 
 % predict z
 z= [d;
-    atan2(dy,dx) - rob_x(3)];
+    atan2(-dy,-dx) - rob_x(3)];
 
 % calculate H
-H(:,1:Ns)  = [-xd -yd 0 0; yd2 -xd2 -1 0];
+H(:,1:Ns)  = [-xd -yd 0 0; yd2 -xd2 0 0];
 
