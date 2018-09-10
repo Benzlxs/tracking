@@ -41,7 +41,7 @@ track_objs;
 
 % initialise states
 initialization_params;
-
+n_obj_pre = 0;
 % main loop 
 while iwp ~= 0
     
@@ -111,7 +111,6 @@ while iwp ~= 0
         
         for k = 1:size(idf_trk,2)
             count_trk(idf_trk(k)) = 0 ; 
-            count_trk
         end
         
         % update
@@ -134,8 +133,16 @@ while iwp ~= 0
     
     % plotting tracked objects
     n_obj = size(x_trk,1);
+    if n_obj~= n_obj_pre
+        for i =1:n_obj_pre
+            set( fig_hs(i).car,'xdata',0, 'ydata', 0);
+            set( fig_hs(i).elliphse,'xdata', 0, 'ydata',0);
+        end
+    end
+    
     for i =1:n_obj
         %TO-DO: predict moving object one by one
+        
         ij = ind_trk_obj(i);
         x_obj=transformtoglobal(track_obj(ij).size, x_trk(i,:));
         %set(track_obj(ij).H.xv_t1,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
@@ -150,7 +157,8 @@ while iwp ~= 0
             set( fig_hs(i).car,'xdata',0, 'ydata', 0);
             set( fig_hs(i).elliphse,'xdata', 0, 'ydata',0);
         end
-    end    
+    end
+    n_obj_pre = n_obj;
     
     ptmp= make_covariance_ellipses(x(1:3),P(1:3,1:3));
     pcov(:,1:size(ptmp,2))= ptmp;

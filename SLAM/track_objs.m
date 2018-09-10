@@ -77,7 +77,7 @@ track_obj(j).size = [lenght, lenght, -lenght, -lenght; width/2, -width/2, -width
 
 %
 N_track_obj = length(track_obj);
-tag_trk_obj = 1:N_track_obj
+tag_trk_obj = 1:N_track_obj;
 
 
 % create a set of handle of plotting for tracked object

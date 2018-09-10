@@ -13,11 +13,12 @@ P_trk = [];  % will be the n*m*m,
 % acceleration of velocity and angle rate
 acc_noise= 1.2; % m^2/s
 ang_velo= (12.0*pi/180); % radians
-Q_trk = [ 0,   0,     0,    0;
-          0,   0,     0,    0;
-          0,   0, sigmaG^2, 0;
+Q_trk = [ 1.0,   0,     0,    0;
+          0,   1.0,     0,    0;
+          0,   0, acc_noise^2, 0;
           0,   0,     0, ang_velo^2] ; 
-
+% give big noise on process model so that trusting less on tracking object
+% states, to use observed measurement to correct object quickly
       
 R_trk = [1.5,  0;
           0 , 1.5] ;      % uncertainty about velocity and angle
@@ -26,9 +27,9 @@ count_trk = [];   % n*1, to count how long the moving objects have not been obse
 
 ind_trk_obj = [];  % n*1 to record the index of real objects
 
-GATE_REJECT_TRK = 2;
+GATE_REJECT_TRK = 2; % maximum distance for association
 
-GATE_AUGMENT_TRK = 4;
+GATE_AUGMENT_TRK = 4; % minimum distance for creation of new feature
 % num to delete the object
 num_del = 50;
 
