@@ -1,12 +1,13 @@
 %%
-% This script is created originally on 29/08/2018; 
+% This script is created originally on 29/09/2018; 
 % version='1.0';
 % 
 % Author: Xuesong(Ben) Li, (benzlee08@gmail.com)
 % University: UNSW
 % All rights reserved
 
-%Algorithm description: SLAM and object tracking are run seperately
+%Algorithm description: SLAM and object tracking together, full KF is
+%performed
 % 1. build map
 % 2. set landmark and road point
 % 3. run slam
@@ -43,15 +44,14 @@ track_objs;
 initialization_params;
 n_obj_pre = 0;
 
-num_lm = 0;
+num_lm = 0;  % keep number of landmark
 % main loop 
-while iwp ~= 0
-    
+while iwp ~= 0    
     %% tracking objects 
     for j=1:N_track_obj
         [track_obj(j).G, track_obj(j).iwp]= compute_steering(track_obj(j).x, track_obj(j).wp, track_obj(j).iwp, AT_WAYPOINT, track_obj(j).G, RATEG, MAXG, dt);
         if track_obj(j).iwp==0 & track_obj(j).LOOP > 1, track_obj(j).iwp = 1; track_obj(j).LOOP = track_obj(j).LOOP ; end % perform loops: if final waypoint reached, go back to first
-        track_obj(j).x= vehicle_model(track_obj(j).x,  track_obj(j).V , track_obj(j).G, WHEELBASE,dt);
+        track_obj(j).x= vehicle_model(track_obj(j).x,  track_obj(j).V, track_obj(j).G, WHEELBASE, dt);
         % plots
         xxtt = transformtoglobal(track_obj(j).size, track_obj(j).x);
         set(track_obj(j).H.xt_t1, 'xdata', xxtt(1,:), 'ydata', xxtt(2,:))
@@ -62,64 +62,47 @@ while iwp ~= 0
     if iwp==0 & NUMBER_LOOPS > 1, iwp=1; NUMBER_LOOPS= NUMBER_LOOPS-1; end % perform loops: if final waypoint reached, go back to first
     xtrue= vehicle_model(xtrue, V,G, WHEELBASE,dt);
     [Vn,Gn]= add_control_noise(V,G,Q, SWITCH_CONTROL_NOISE);    
-    
-    
-    %% EKF predict step
-    [x,P]= predict (x,P, Vn,Gn,QE, WHEELBASE,dt);
-    
-    %% prediction of moving objects
-    n_obj = size(x_trk,1);
-    for i =1:n_obj
-        %TO-DO: predict moving object one by one
-        [x_temp,P_temp]= predict_moving_object (x_trk(i,:), squeeze(P_trk(i,:,:)), Q_trk, dt);  
-        x_trk(i,:) = x_temp;
-        P_trk(i,:,:) = P_temp; 
-    end
-    
-    % if heading known, observe heading
-    [x,P]= observe_heading(x,P, xtrue(3), SWITCH_HEADING_KNOWN);
+        
+    %% EKF predict step of SLAM and moving object tracking
+    [x,P]= predict_slam_mot( x, P, Vn, Gn, QE, WHEELBASE, dt, num_lm, Q_trk);
     
     %% EKF update step
     dtsum= dtsum + dt;
     if dtsum >= DT_OBSERVE
-        %% SLAM system
+        %% Get simulated Observation
         dtsum= 0;
-        [z,ftag_visible]= get_observations(xtrue, lm, ftag, MAX_RANGE);
-        z= add_observation_noise(z,R, SWITCH_SENSOR_NOISE);
-    
-        if SWITCH_ASSOCIATION_KNOWN == 1
-            [zf,idf,zn, da_table]= data_associate_known(x,z,ftag_visible, da_table);
-        else
-            [zf,idf, zn]= data_associate(x,P,z,RE, GATE_REJECT, GATE_AUGMENT); 
-        end
-
-        if SWITCH_USE_IEKF == 1
-            [x,P]= update_iekf(x,P,zf,RE,idf, 5);
-        else
-            [x,P]= update(x,P,zf,RE,idf, SWITCH_BATCH_UPDATE); 
-        end
-        [x,P]= augment(x,P, zn,RE); 
-        num_lm = num_lm + size(zn,2);
-        
-        %% tracking system
-        for k = 1:n_obj
+        % slam observation
+        [z_lm ,ftag_visible, z_mot_obj, ind_mot_z]= get_observations_slam_mot(xtrue, lm, ftag, MAX_RANGE, num_lm, track_obj, tag_trk_obj);
+        z_lm= add_observation_noise(z_lm,R, SWITCH_SENSOR_NOISE);
+        z_mot_obj = add_observation_noise(z_mot_obj, R, SWITCH_SENSOR_NOISE);
+        % tracking observation
+        num_mot = (size(x,1) - 3 - num_lm*2)/4;
+        for k = 1:num_mot
             count_trk(k) = count_trk(k) + 1;
         end
-        % getting the measurements from moving target
-        [z_trk_obj, ind_trk_z] = get_observations_tracking_obj(xtrue, track_obj, tag_trk_obj, MAX_RANGE);
-        z_trk_obj = add_observation_noise(z_trk_obj, R, SWITCH_SENSOR_NOISE); 
-
-        % data association
-        [zf_trk , idf_trk, zn_trk, zn_ind]= data_associate_tracking_obj(x(1:3), x_trk, P_trk, z_trk_obj, ind_trk_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK); 
+        %[z_mot_obj, ind_mot_z] = get_observations_tracking_obj(xtrue, track_obj, tag_trk_obj, MAX_RANGE);
+                 
+        %% Data association
+        % slam data association
+        [zf,idf, zn]= data_associate_slam_mot_lm(x,P,z_lm,RE, GATE_REJECT, GATE_AUGMENT, num_lm); 
+         % object tracking data association 
+        [zf_mot , idf_mot, zn_mot, zn_ind]= data_associate_slam_mot_mot(x, P, z_mot_obj, ind_mot_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK, num_lm); 
         
-        for k = 1:size(idf_trk,2)
-            count_trk(idf_trk(k)) = 0 ; 
+        num_lm = num_lm + size(zn,2);  % updating the number of landmark
+        %% updating with full Kalman filtering
+        [x,P]= update_slam_mot(x,P,zf, RE, zf_mot, RE, idf, idf_mot, SWITCH_BATCH_UPDATE, num_lm);
+        
+        % [x_trk , P_trk]= update_tracking_obj(x(1:3), x_trk , P_trk, zf_mot, RE, idf_mot);
+        
+        %% augmentation and deleting
+        [x,P]= augment(x,P, zn,RE); 
+        
+        for k = 1:size(idf_mot,2)
+            count_trk(idf_mot(k)) = 0 ; 
         end
-        
-        % update
-        [x_trk , P_trk]= update_tracking_obj(x(1:3), x_trk , P_trk, zf_trk, RE, idf_trk);
+
         % augmentation and deletion
-        [x_trk , P_trk, count_trk, ind_trk_obj]= augment_tracking_obj(x(1:3), P(1:3,1:3), x_trk , P_trk, zn_trk, R_trk, count_trk, zn_ind, ind_trk_obj); 
+        [x_trk , P_trk, count_trk, ind_trk_obj]= augment_tracking_obj(x(1:3), P(1:3,1:3), x_trk , P_trk, zn_mot, R_trk, count_trk, zn_ind, ind_trk_obj); 
         [x_trk , P_trk, count_trk, ind_trk_obj] = del_tracking_obj(x_trk , P_trk, count_trk, num_del, ind_trk_obj);
     end
     
@@ -135,15 +118,15 @@ while iwp ~= 0
     set(h.xf, 'xdata', x(4:2:end), 'ydata', x(5:2:end))
     
     % plotting tracked objects
-    n_obj = size(x_trk,1);
-    if n_obj~= n_obj_pre
+    num_mot = size(x_trk,1);
+    if num_mot~= n_obj_pre
         for i =1:n_obj_pre
             set( fig_hs(i).car,'xdata',0, 'ydata', 0);
             set( fig_hs(i).elliphse,'xdata', 0, 'ydata',0);
         end
     end
     
-    for i =1:n_obj
+    for i =1:num_mot
         %TO-DO: predict moving object one by one
         
         ij = ind_trk_obj(i);
@@ -161,7 +144,7 @@ while iwp ~= 0
             set( fig_hs(i).elliphse,'xdata', 0, 'ydata',0);
         end
     end
-    n_obj_pre = n_obj;
+    n_obj_pre = num_mot;
     
     ptmp= make_covariance_ellipses(x(1:3),P(1:3,1:3));
     pcov(:,1:size(ptmp,2))= ptmp;
@@ -174,8 +157,8 @@ while iwp ~= 0
         end
         if ~isempty(z)
             plines= make_laser_lines (z,x(1:3));
-            if ~isempty(z_trk_obj)
-                pp = make_laser_lines (z_trk_obj,x(1:3));
+            if ~isempty(z_mot_obj)
+                pp = make_laser_lines (z_mot_obj,x(1:3));
                 plines = [plines pp];
             end
             set(h.obs, 'xdata', plines(1,:), 'ydata', plines(2,:))
