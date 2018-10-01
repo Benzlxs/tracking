@@ -12,7 +12,8 @@ idf= [];
 Nxv= 3; % number of vehicle pose states
 Nf= num_lm;%(length(x) - Nxv)/2; % number of features already in map
 
-P_lm = P(1:(3+2*NF),1:(3+2*NF));
+P_lm = P(1:(3+2*Nf),1:(3+2*Nf)); %% covariance is too large
+x_lm = x(1:(3+2*Nf));
 % linear search for nearest-neighbour, no clever tricks (like a quick
 % bounding-box threshold to remove distant features; or, better yet,
 % a balanced k-d tree lookup). TODO: implement clever tricks.
@@ -23,7 +24,7 @@ for i=1:size(z,2)
     
     % search for neighbours
     for j=1:Nf
-        [nis, nd]= compute_association(x,P_lm,z(:,i),R, j);
+        [nis, nd]= compute_association(x_lm,P_lm,z(:,i),R, j);
         if nis < gate1 & nd < nbest % if within gate, store nearest-neighbour
             nbest= nd;
             jbest= j;
@@ -47,7 +48,10 @@ function [nis, nd]= compute_association(x,P,z,R,idf)
 [zp,H]= observe_model(x, idf);
 v= z-zp; 
 v(2)= pi_to_pi(v(2));
-S= H*P*H' + R;
 
+% nd = abs(v(1));   % distance difference
+% nis  = (abs(v(1)) + abs(v(2)))/2;  % angle difference
+S= H*P*H' + R;
+ 
 nis= v'*inv(S)*v;
 nd= nis + log(det(S));

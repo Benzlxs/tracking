@@ -20,8 +20,9 @@ Q_trk = [ 1.0,   0,     0,    0;
 % give big noise on process model so that trusting less on tracking object
 % states, to use observed measurement to correct object quickly
       
-R_trk = [1.5,  0;
-          0 , 1.5] ;      % uncertainty about velocity and angle
+% R_trk = [1.5,  0;
+%          0 , 1.5] ;      % uncertainty about velocity and angle
+R_trk = R ;
       
 count_trk = [];   % n*1, to count how long the moving objects have not been observed
 

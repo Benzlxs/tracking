@@ -42,10 +42,17 @@ track_objs;
 
 % initialise states
 initialization_params;
+
+Q_trk = [ 1,   0,     0,    0;
+          0,   1,     0,    0;
+          0,   0,     0.5,    0;
+          0,   0,     0,    0.5] ; 
+
 n_obj_pre = 0;
 
 num_lm = 0;  % keep number of landmark
 % main loop 
+debug=0;
 while iwp ~= 0    
     %% tracking objects 
     for j=1:N_track_obj
@@ -70,6 +77,7 @@ while iwp ~= 0
     dtsum= dtsum + dt;
     if dtsum >= DT_OBSERVE
         %% Get simulated Observation
+        debug = debug + 1
         dtsum= 0;
         % slam observation
         [z_lm ,ftag_visible, z_mot_obj, ind_mot_z]= get_observations_slam_mot(xtrue, lm, ftag, MAX_RANGE, num_lm, track_obj, tag_trk_obj);
@@ -83,27 +91,32 @@ while iwp ~= 0
         %[z_mot_obj, ind_mot_z] = get_observations_tracking_obj(xtrue, track_obj, tag_trk_obj, MAX_RANGE);
                  
         %% Data association
-        % slam data association
-        [zf,idf, zn]= data_associate_slam_mot_lm(x,P,z_lm,RE, GATE_REJECT, GATE_AUGMENT, num_lm); 
-         % object tracking data association 
-        [zf_mot , idf_mot, zn_mot, zn_ind]= data_associate_slam_mot_mot(x, P, z_mot_obj, ind_mot_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK, num_lm); 
-        
-        num_lm = num_lm + size(zn,2);  % updating the number of landmark
+        % slam data association  
+        if SWITCH_ASSOCIATION_KNOWN == 1
+            [zf,idf,zn, da_table]= data_associate_known(x(1:(3+2*num_lm)),z_lm,ftag_visible, da_table);
+            [zf_mot , idf_mot, zn_mot, zn_ind]= data_associate_slam_mot_mot(x, P, z_mot_obj, ind_mot_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK, num_lm); 
+        else        
+            [zf,idf, zn]= data_associate_slam_mot_lm(x,P,z_lm,RE, GATE_REJECT, GATE_AUGMENT, num_lm); 
+            % object tracking data association 
+            [zf_mot , idf_mot, zn_mot, zn_ind]= data_associate_slam_mot_mot(x, P, z_mot_obj, ind_mot_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK, num_lm); 
+        end       
         %% updating with full Kalman filtering
-        [x,P]= update_slam_mot(x,P,zf, RE, zf_mot, RE, idf, idf_mot, SWITCH_BATCH_UPDATE, num_lm);
-        
-        % [x_trk , P_trk]= update_tracking_obj(x(1:3), x_trk , P_trk, zf_mot, RE, idf_mot);
-        
+        if SWITCH_USE_IEKF == 1
+            [x,P]= update_iekf_slam_mot(x,P,zf,RE,idf,zf_mot, RE, idf_mot, num_lm, 5);
+        else
+            [x,P]= update_slam_mot(x,P,zf, RE, idf, zf_mot, RE, idf_mot, SWITCH_BATCH_UPDATE, num_lm);        
+        end
+        % [x_trk , P_trk]= update_tracking_obj(x(1:3), x_trk , P_trk, zf_mot, RE, idf_mot);        
         %% augmentation and deleting
-        [x,P]= augment(x,P, zn,RE); 
-        
+        [x,P]= augment_slam_mot_lm(x,P, zn,RE, num_lm); 
+        num_lm = num_lm + size(zn,2);  % updating the number of landmark, after agumentation, the num_lm can be updated.
         for k = 1:size(idf_mot,2)
             count_trk(idf_mot(k)) = 0 ; 
         end
 
         % augmentation and deletion
-        [x_trk , P_trk, count_trk, ind_trk_obj]= augment_tracking_obj(x(1:3), P(1:3,1:3), x_trk , P_trk, zn_mot, R_trk, count_trk, zn_ind, ind_trk_obj); 
-        [x_trk , P_trk, count_trk, ind_trk_obj] = del_tracking_obj(x_trk , P_trk, count_trk, num_del, ind_trk_obj);
+        [x, P, count_trk, ind_trk_obj] = augment_slam_mot_mot(x, P, zn_mot, zn_ind, R_trk, num_lm, ind_trk_obj, count_trk); 
+        [x, P, count_trk, ind_trk_obj] = del_slam_mot(x, P, count_trk, num_del, ind_trk_obj, num_lm);
     end
     
     %% plotting
@@ -118,7 +131,7 @@ while iwp ~= 0
     set(h.xf, 'xdata', x(4:2:end), 'ydata', x(5:2:end))
     
     % plotting tracked objects
-    num_mot = size(x_trk,1);
+    num_mot = (size(x,1) - 3 - num_lm*2)/4;
     if num_mot~= n_obj_pre
         for i =1:n_obj_pre
             set( fig_hs(i).car,'xdata',0, 'ydata', 0);
@@ -128,14 +141,14 @@ while iwp ~= 0
     
     for i =1:num_mot
         %TO-DO: predict moving object one by one
-        
+        ind = 3 + 2*num_lm + 4*(i-1) + 1; 
         ij = ind_trk_obj(i);
-        x_obj=transformtoglobal(track_obj(ij).size, x_trk(i,:));
+        x_obj=transformtoglobal(track_obj(ij).size, x(ind:ind+3));
         %set(track_obj(ij).H.xv_t1,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
         set( fig_hs(i).car,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
-        p_conv= make_covariance_ellipses_tracking_obj(x_trk(i,:), squeeze(P_trk(i,:,:)));
+        p_conv= make_covariance_ellipses_tracking_obj(x(ind:ind+3), P(ind:ind+3,ind:ind+3));
         %set(track_obj(ij).H.cov_t1,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
-        set( fig_hs(i).elliphse,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
+        set( fig_hs(i).elliphse,'xdata',real(p_conv(1,:)), 'ydata', real(p_conv(2,:)));
         
         % vanish the deleted objects 
         %vanish_img(track_obj, ind_trk_obj, count_trk,num_del )
@@ -149,14 +162,14 @@ while iwp ~= 0
     ptmp= make_covariance_ellipses(x(1:3),P(1:3,1:3));
     pcov(:,1:size(ptmp,2))= ptmp;
     if dtsum==0
-        set(h.cov, 'xdata', pcov(1,:), 'ydata', pcov(2,:)) 
+        set(h.cov, 'xdata', real(pcov(1,:)), 'ydata', real(pcov(2,:))) ;
         pcount= pcount+1;
         if pcount == 15
             set(h.pth, 'xdata', data.path(1,1:data.i), 'ydata', data.path(2,1:data.i))    
             pcount=0;
         end
-        if ~isempty(z)
-            plines= make_laser_lines (z,x(1:3));
+        if ~isempty(z_lm)
+            plines= make_laser_lines (z_lm,x(1:3));
             if ~isempty(z_mot_obj)
                 pp = make_laser_lines (z_mot_obj,x(1:3));
                 plines = [plines pp];

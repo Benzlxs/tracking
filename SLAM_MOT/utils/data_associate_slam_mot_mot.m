@@ -32,7 +32,7 @@ for i=1:z_num
     
     % search for neighbours
     for j=1:Nf
-        ind = 3+num_lm*2 + 4*j -3
+        ind = 3+num_lm*2 + 4*j -3 ;
         [nis, nd]= compute_association_tracking_obj(x(1:3), x(ind:ind+3),P(ind:ind+3,ind:ind+3),z(:,i),R);
         if nis < gate1 & nd < nbest % if within gate, store nearest-neighbour
             nbest= nd;

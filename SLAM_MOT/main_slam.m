@@ -98,7 +98,8 @@ while iwp ~= 0
         dtsum= 0;
         [z,ftag_visible]= get_observations(xtrue, lm, ftag, MAX_RANGE);
         z= add_observation_noise(z,R, SWITCH_SENSOR_NOISE);
-    
+        
+        SWITCH_ASSOCIATION_KNOWN = 1
         if SWITCH_ASSOCIATION_KNOWN == 1
             [zf,idf,zn, da_table]= data_associate_known(x,z,ftag_visible, da_table);
         else

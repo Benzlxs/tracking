@@ -25,12 +25,12 @@ vts= v*dt*s; vtc= v*dt*c;
 J(1:3,1:3)= [1 0 -vts;
              0 1  vtc;
              0 0  1];
-G_u= [dt*c          -vts;
+Gu= [dt*c          -vts;
       dt*s          vtc;
       dt*sin(g)/WB  v*dt*cos(g)/WB];
 
 % jacobians for moving objects
-assert((size(x,1) - 3 - num_lm*2)/4 == 0,'number of moving objects should be integer');
+assert(mod((size(x,1) - 3 - num_lm*2),4) == 0,'number of moving objects should be integer');
 num_mot = (size(x,1) - 3 - num_lm*2)/4;
 
 % predict state
@@ -40,7 +40,7 @@ x(1:3)= [x(1) + vtc;
 
 
 for i = 1:num_mot
-    ind = 3 + num_lm*2 + 4*i- 1
+    ind = 3 + num_lm*2 + 4*i- 1;
     s= sin( x(ind)); c= cos( x(ind));
     vts= x(ind+1)*dt*s; vtc= x(ind+1)*dt*c;
     ct = c*dt; st = dt*s;
@@ -56,7 +56,7 @@ P(1:3,1:3)= P(1:3,1:3) + Gu*Q*Gu';
 
 % adding motion model noise
 for i = 1:num_mot
-    ind = 3 + num_lm*2 + 4*i- 1
+    ind = 3 + num_lm*2 + 4*i- 1;
     s= sin( x(ind)); c= cos( x(ind));
     vts= x(ind+1)*dt*s; vtc= x(ind+1)*dt*c;
     % adding the motion noise

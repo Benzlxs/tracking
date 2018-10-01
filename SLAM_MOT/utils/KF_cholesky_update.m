@@ -9,6 +9,9 @@ function [x,P]= KF_cholesky_update(x,P,v,R,H)
 % Tim Bailey 2003
 % Developed by Jose Guivant 
 
+% this might be specific for SLAM problem
+%P(1:1+size(P,1):end) = max(diag(P),1e-6);
+
 PHt= P*H';
 S= H*PHt + R;
 
