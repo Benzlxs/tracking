@@ -57,14 +57,16 @@ Gz= [c  -r*s;
      0    0  ];
      
 % augment P
-P_temp= Gv*P(1:3,1:3)*Gv' + Gz*R*Gz'; % feature cov
+noise_v = zeros(4,4);
+noise_v(4,4) = 1;
+P_temp= Gv*P(1:3,1:3)*Gv' + Gz*R*Gz' + noise_v; % feature cov
 
 rng = (len+1):(len+4) ; 
 P(rng, rng) = P_temp; 
 P(rng,1:3) = Gv*P(1:3,1:3);
 P(1:3,rng)= P(rng,1:3)';
 rnm = 4:len;
-P(rng, rnm) = 0; % assuming that landmark and moving object are independent
-P(rnm, rng) = 0;
+P(rng, rnm) = 0;% Gv*P(1:3,rnm); % assuming that landmark and moving object are independent
+P(rnm, rng) = P(rng, rnm)';
 
 

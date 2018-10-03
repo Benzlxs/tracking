@@ -30,7 +30,7 @@ yd2= dy/d2;
 
 % predict z
 z= [d;
-    atan2(dy,dx) - x(3)];
+    pi_to_pi(atan2(dy,dx) - x(3))];
 
 % calculate H
 H(:,1:3)        = [-xd -yd 0; yd2 -xd2 -1];

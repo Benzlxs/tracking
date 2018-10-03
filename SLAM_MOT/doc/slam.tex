@@ -1,0 +1,94 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools}  % loads »amsmath«
+
+\usepackage{epsfig}
+\usepackage{subfigure}
+\usepackage{calc}
+\usepackage{url}
+\usepackage{amssymb}
+\usepackage{amstext}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{multicol}
+\usepackage{bbm}
+\usepackage{pslatex}
+\usepackage{apalike}
+\usepackage{multirow}
+\usepackage{upquote}
+ 
+\begin{document}
+
+\title{SLAM and MOT}
+\author{Xuesong LI}
+\date{}
+\maketitle
+
+\section{Notation}
+
+$ Robot state: X_{r} = \begin{bmatrix} x_{r} \\ y_{r} \\ \alpha_{r} \end{bmatrix} $
+
+\noindent$ Landmark state: X_{lm} =  \begin{bmatrix} x_{lm} \\ y_{lm} \end{bmatrix} $ (To simplify equation, just use one landmark)
+
+\noindent$ Moving object state: X_{mot} = \begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix} $
+
+
+\section{Processing model}
+Motion model is   $X(k+1) = F(X(k), u(k))$
+\\
+
+$\begin{bmatrix} x_{r} \\ y_{r} \\ \alpha_{r} \\ x_{lm} \\ y_{lm} \\  x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}(k+1) =
+ \begin{bmatrix} x_{r} \\ y_{r} \\ \alpha_{r} \\ x_{lm} \\ y_{lm} \\  x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}(k)  + 
+dt*\begin{bmatrix} v_{r}(k)*cos(\alpha_{r}(k) + g(k)) \\ v_{r}(k)*sin(\alpha_{r}(k) + g(k)) \\ \ v_{r}(k)*sin(g(k)) / WB \\ 0 \\ 0 \\ v_{mot}(k)*cos(\alpha_{mot}(k)) \\ v_{mot}(k)*sin(\alpha_{mot}(k))  \\ 0 \\ 0 \end{bmatrix} $
+
+\noindent$g$ is steering angle, $v_{r}$ is robot speed, $WB$ is the vehicle wheel-base. Constant velocity and orientation assumption is made for moving objects.
+\\
+
+\noindent Jacobian of states in process model is as following.
+
+
+\noindent $J=\begin{bmatrix}    1  &  0  &   -v_{r}(k)*dt*sin(\alpha_{r}(k) + g(k)) & 0 & 0 & 0 & 0 & 0 & 0 \\
+						0  &  1  &   v_{r}(k)*dt*cos(\alpha_{r}(k) + g(k)) & 0 & 0 & 0 & 0 & 0 & 0 \\
+						0  &  0  &   1   &  0 & 0 & 0 & 0 & 0 & 0 \\
+						0  &  0  &   0   &  1 & 0 & 0 & 0 & 0 & 0 \\
+						0  &  0  &   0   &  0 & 1 & 0 & 0 & 0 & 0 \\
+						0  &  0  &   0   &  0 & 0 & 1 & 0 & -v_{mot}(k)*dt*sin(\alpha_{mot}(k)) &  dt*cos(\alpha_{mot}(k)) \\
+						0  &  0  &   0   &  0 & 0 & 0 & 1 &  v_{mot}(k)*dt*cos(\alpha_{mot}(k)) & dt*sin(\alpha_{mot}(k)) \\
+						0  &  0  &   0   &  0 & 0 & 0 & 0 & 1 & 0 \\
+						0  &  0  &   0   &  0 & 0 & 0 & 0 & 0 & 1 
+\end{bmatrix}$
+\\
+\\
+\\
+Jacobian of inputs in process model is as following.
+\\
+
+
+\noindent $J_{u}=\begin{bmatrix}   dt*cos(\alpha_{r}(k) + g(k)) & -v_{r}(k)*dt*sin(\alpha_{r}(k) + g(k))  \\
+						           dt*sin(\alpha_{r}(k) + g(k)) &  v_{r}(k)*dt*cos(\alpha_{r}(k) + g(k)) \\
+						0  &  0   \\
+						0  &  0  \\
+						0  &  0  \\
+						0  &  0  \\
+						0  &  0  \\
+						0  &  0  \\
+						0  &  0   
+\end{bmatrix} $
+\\
+
+\noindent Prediction step:
+\\
+\\
+\^{X(k+1)} = F(\^{X(k)}, u(k))
+\\
+\\
+\noindent $P(k+1|k) = J*P(K|K)*J^{T} + J_{u}*Q_{u}*J_{u}^{T}$
+
+   
+\section{Observation Model}
+
+
+
+\end{document}

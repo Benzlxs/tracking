@@ -12,11 +12,11 @@ x_trk = [];  % will be n*m, n is the number of tracked objects, m is the number 
 P_trk = [];  % will be the n*m*m,  
 % acceleration of velocity and angle rate
 acc_noise= 1.2; % m^2/s
-ang_velo= (12.0*pi/180); % radians
+ang_velo= (50.0*pi/180); % radians
 Q_trk = [ 1.0,   0,     0,    0;
           0,   1.0,     0,    0;
-          0,   0, acc_noise^2, 0;
-          0,   0,     0, ang_velo^2] ; 
+          0,   0, ang_velo^2, 0;
+          0,   0,     0, acc_noise^2] ; 
 % give big noise on process model so that trusting less on tracking object
 % states, to use observed measurement to correct object quickly
       
@@ -39,6 +39,7 @@ dt= DT_CONTROLS; % change in time between predicts
 dtsum= 0; % change in time since last observation
 ftag= 1:size(lm,2); % identifier for each landmark
 da_table= zeros(1,size(lm,2)); % data association table 
+mot_table = zeros(1, N_track_obj);
 iwp= 1; % index to first waypoint 
 G= 0; % initial steer angle
 data= initialise_store(x,P,x); % stored data for off-line

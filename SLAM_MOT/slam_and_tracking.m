@@ -23,6 +23,7 @@ clc, clear;
 close all;
 global wp lm;
 
+rng(0,'twister')
 if nargin==0
     map_dir='./map.mat';
 end
@@ -43,11 +44,15 @@ track_objs;
 % initialise states
 initialization_params;
 
-Q_trk = [ 1,   0,     0,    0;
-          0,   1,     0,    0;
-          0,   0,     0.5,    0;
-          0,   0,     0,    0.5] ; 
+% Q_trk = [ 2,   0,     0,    0;
+%           0,   2,     0,    0;
+%           0,   0,     1,    0;
+%           0,   0,     0,    1] ; 
 
+Q_trk = 4* Q_trk;
+
+R_trk =  [sigmaR^2 0; 0 sigmaB^2];
+      
 n_obj_pre = 0;
 
 num_lm = 0;  % keep number of landmark
@@ -78,6 +83,7 @@ while iwp ~= 0
     if dtsum >= DT_OBSERVE
         %% Get simulated Observation
         debug = debug + 1
+    
         dtsum= 0;
         % slam observation
         [z_lm ,ftag_visible, z_mot_obj, ind_mot_z]= get_observations_slam_mot(xtrue, lm, ftag, MAX_RANGE, num_lm, track_obj, tag_trk_obj);
@@ -94,17 +100,20 @@ while iwp ~= 0
         % slam data association  
         if SWITCH_ASSOCIATION_KNOWN == 1
             [zf,idf,zn, da_table]= data_associate_known(x(1:(3+2*num_lm)),z_lm,ftag_visible, da_table);
-            [zf_mot , idf_mot, zn_mot, zn_ind]= data_associate_slam_mot_mot(x, P, z_mot_obj, ind_mot_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK, num_lm); 
+            [zf_mot , idf_mot, zn_mot, zn_ind, mot_table]= data_associate_slam_mot_known(x, z_mot_obj, ind_mot_z, num_lm, mot_table); 
         else        
             [zf,idf, zn]= data_associate_slam_mot_lm(x,P,z_lm,RE, GATE_REJECT, GATE_AUGMENT, num_lm); 
-            % object tracking data association 
             [zf_mot , idf_mot, zn_mot, zn_ind]= data_associate_slam_mot_mot(x, P, z_mot_obj, ind_mot_z, RE, GATE_REJECT_TRK, GATE_AUGMENT_TRK, num_lm); 
         end       
         %% updating with full Kalman filtering
         if SWITCH_USE_IEKF == 1
             [x,P]= update_iekf_slam_mot(x,P,zf,RE,idf,zf_mot, RE, idf_mot, num_lm, 5);
         else
-            [x,P]= update_slam_mot(x,P,zf, RE, idf, zf_mot, RE, idf_mot, SWITCH_BATCH_UPDATE, num_lm);        
+            [x,P]= update_slam_mot(x,P,zf, RE, idf, zf_mot, R_trk, idf_mot, SWITCH_BATCH_UPDATE, num_lm);        
+        end
+        
+        if mod(debug,1)==0
+            eigens = eigs(P)
         end
         % [x_trk , P_trk]= update_tracking_obj(x(1:3), x_trk , P_trk, zf_mot, RE, idf_mot);        
         %% augmentation and deleting
@@ -116,7 +125,11 @@ while iwp ~= 0
 
         % augmentation and deletion
         [x, P, count_trk, ind_trk_obj] = augment_slam_mot_mot(x, P, zn_mot, zn_ind, R_trk, num_lm, ind_trk_obj, count_trk); 
-        [x, P, count_trk, ind_trk_obj] = del_slam_mot(x, P, count_trk, num_del, ind_trk_obj, num_lm);
+        if SWITCH_ASSOCIATION_KNOWN == 1
+            [x, P, count_trk, ind_trk_obj, mot_table] = del_slam_mot_known(x, P, count_trk, num_del, ind_trk_obj, num_lm, mot_table);
+        else
+            [x, P, count_trk, ind_trk_obj] = del_slam_mot(x, P, count_trk, num_del, ind_trk_obj, num_lm);
+        end
     end
     
     %% plotting

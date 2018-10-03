@@ -64,7 +64,7 @@ for i = 1:num_mot
     % predict state
     x(ind-2:ind+1)  = [x(ind-2) + vtc; 
                        x(ind-1) + vts;
-                       x(ind  );
-                       x(ind+1)];
+                       pi_to_pi(x(ind ));
+                       abs(x(ind+1))];
 end
 

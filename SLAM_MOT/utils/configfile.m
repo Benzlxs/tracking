@@ -42,7 +42,7 @@ SWITCH_HEADING_KNOWN= 0; % if 1, the vehicle heading is observed directly at eac
 SWITCH_ASSOCIATION_KNOWN= 1; % if 1, associations are given, if 0, they are estimated using gates
 SWITCH_BATCH_UPDATE= 1; % if 1, process scan in batch, if 0, process sequentially
 SWITCH_SEED_RANDOM= 0; % if not 0, seed the randn() with its value at beginning of simulation (for repeatability)
-SWITCH_USE_IEKF= 1; % if 1, use iterated EKF for updates, if 0, use normal EKF
+SWITCH_USE_IEKF= 0; % if 1, use iterated EKF for updates, if 0, use normal EKF
 
 
 MAP_H = 200;   % height of map
