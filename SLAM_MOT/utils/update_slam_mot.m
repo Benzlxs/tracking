@@ -49,8 +49,9 @@ for i = (num_z_lm+1):lenz
 
     RR(ii,ii)= R_mot;
 end
-        
-[x,P]= KF_update(x,P,v,RR,H);
+ 
+[x,P] = KF_cholesky_update(x,P,v,RR,H);
+%[x,P]= KF_update(x,P,v,RR,H);
 
 %
 %
@@ -88,6 +89,7 @@ for i=1:lenz
 end   
      
 lenz= size(zf_mot, 2);
+%lenz = 0;
 for i=1:lenz
     [zp,H]= observe_model_slam_mot(x, idf_mot(i), num_lm);
     

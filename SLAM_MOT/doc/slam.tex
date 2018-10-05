@@ -18,6 +18,14 @@
 \usepackage{apalike}
 \usepackage{multirow}
 \usepackage{upquote}
+\usepackage{changepage}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{changepage}
+
+
+
+
  
 \begin{document}
 
@@ -32,7 +40,7 @@ $ Robot state: X_{r} = \begin{bmatrix} x_{r} \\ y_{r} \\ \alpha_{r} \end{bmatrix
 
 \noindent$ Landmark state: X_{lm} =  \begin{bmatrix} x_{lm} \\ y_{lm} \end{bmatrix} $ (To simplify equation, just use one landmark)
 
-\noindent$ Moving object state: X_{mot} = \begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix} $
+\noindent$ Moving object state: X_{mot} = \begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix} $  (To simplify equation, just use one moving object)
 
 
 \section{Processing model}
@@ -43,12 +51,12 @@ $\begin{bmatrix} x_{r} \\ y_{r} \\ \alpha_{r} \\ x_{lm} \\ y_{lm} \\  x_{mot} \\
  \begin{bmatrix} x_{r} \\ y_{r} \\ \alpha_{r} \\ x_{lm} \\ y_{lm} \\  x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}(k)  + 
 dt*\begin{bmatrix} v_{r}(k)*cos(\alpha_{r}(k) + g(k)) \\ v_{r}(k)*sin(\alpha_{r}(k) + g(k)) \\ \ v_{r}(k)*sin(g(k)) / WB \\ 0 \\ 0 \\ v_{mot}(k)*cos(\alpha_{mot}(k)) \\ v_{mot}(k)*sin(\alpha_{mot}(k))  \\ 0 \\ 0 \end{bmatrix} $
 
-\noindent$g$ is steering angle, $v_{r}$ is robot speed, $WB$ is the vehicle wheel-base. Constant velocity and orientation assumption is made for moving objects.
+\noindent$g(k)$ is steering angle, $v_{r}(k)$ is robot speed, $WB$ is the vehicle wheel-base. Constant velocity and orientation assumption is made for moving objects.
 \\
 
 \noindent Jacobian of states in process model is as following.
 
-
+\begin{adjustwidth}{ -2 cm}{}
 \noindent $J=\begin{bmatrix}    1  &  0  &   -v_{r}(k)*dt*sin(\alpha_{r}(k) + g(k)) & 0 & 0 & 0 & 0 & 0 & 0 \\
 						0  &  1  &   v_{r}(k)*dt*cos(\alpha_{r}(k) + g(k)) & 0 & 0 & 0 & 0 & 0 & 0 \\
 						0  &  0  &   1   &  0 & 0 & 0 & 0 & 0 & 0 \\
@@ -59,14 +67,15 @@ dt*\begin{bmatrix} v_{r}(k)*cos(\alpha_{r}(k) + g(k)) \\ v_{r}(k)*sin(\alpha_{r}
 						0  &  0  &   0   &  0 & 0 & 0 & 0 & 1 & 0 \\
 						0  &  0  &   0   &  0 & 0 & 0 & 0 & 0 & 1 
 \end{bmatrix}$
-\\
-\\
-\\
+\end{adjustwidth}
+
+
+
 Jacobian of inputs in process model is as following.
 \\
 
 
-\noindent $J_{u}=\begin{bmatrix}   dt*cos(\alpha_{r}(k) + g(k)) & -v_{r}(k)*dt*sin(\alpha_{r}(k) + g(k))  \\
+\noindent $J_{u}$ = $\begin{bmatrix}   dt*cos(\alpha_{r}(k) + g(k)) & -v_{r}(k)*dt*sin(\alpha_{r}(k) + g(k))  \\
 						           dt*sin(\alpha_{r}(k) + g(k)) &  v_{r}(k)*dt*cos(\alpha_{r}(k) + g(k)) \\
 						0  &  0   \\
 						0  &  0  \\
@@ -77,6 +86,8 @@ Jacobian of inputs in process model is as following.
 						0  &  0   
 \end{bmatrix} $
 \\
+\\
+
 
 \noindent Prediction step:
 \\
@@ -84,11 +95,179 @@ Jacobian of inputs in process model is as following.
 \^{X(k+1)} = F(\^{X(k)}, u(k))
 \\
 \\
-\noindent $P(k+1|k) = J*P(K|K)*J^{T} + J_{u}*Q_{u}*J_{u}^{T}$
+\noindent $P(k+1|k) = J*P(K|K)*J^{T} + J_{u}*Q_{u}*J_{u}^{T} + Q_{mot}$
+\\
+
+\noindent $Q_{mot}$ is noise in motion model of moving object.
+\\
+$Q_{mot}$ is $\begin{bmatrix}  0  &  0  &  0  &  0  &  0  &  0  &  0 &  0 &  0 \\
+						     0  &  0  &  0  &  0  &  0  &  0  &  0 &  0 &  0 \\
+						     0  &  0  &  0  &  0  &  0  &  0  &  0 &  0 &  0 \\
+							 0  &  0  &  0  &  0  &  0  &  0  &  0 &  0 &  0 \\
+							 0  &  0  &  0  &  0  &  0  &  0  &  0 &  0 &  0 \\
+						 	 0  &  0  &  0  &  0  &  0  &  q_{x}  &  0 &  0 &  0 \\
+							 0  &  0  &  0  &  0  &  0  &  0  &  q_{y} &  0 &  0 \\
+							 0  &  0  &  0  &  0  &  0  &  0  &  0 &  q_{\alpha} &  0 \\
+							 0  &  0  &  0  &  0  &  0  &  0  &  0 &  0 &  q_{v} \\
+\end{bmatrix}$
 
    
 \section{Observation Model}
 
+\noindent Observation model is $Y(K) = h(X(K))$, the observation is range and bearing. We assume that the landmark and moving object are observed simultaneously. $(r_{lm}, b_{lm})$ is the observation from landmark, and  $(r_{mot}, b_{mot})$ is the observation from moving object.
 
+\noindent $Y(k)$ = $\begin{bmatrix} r_{lm} \\ b_{lm} \\ r_{mot} \\ b_{mot} \end{bmatrix}(k)$= 
+$\begin{bmatrix}  \sqrt{(x_{lm}(k)-x_{r}(k))^2+(y_{lm}(k)-y_{r}(k))^2}\\
+					atan2(y_{lm}(k)-y_{r}(k),x_{lm}(k)-x_{r}(k)) -\alpha_{r}(k)\\ 
+					\sqrt{(x_{mot}(k)-x_{r}(k))^2+(y_{mot}(k)-y_{r}(k))^2} \\
+					atan2(y_{mot}(k)-y_{r}(k),x_{mot}(k)-x_{r}(k)) -\alpha_{r}(k)
+\end{bmatrix}$
+\\
+\\
+\\
+\noindent Jacobian of observation model is H as following.
+
+\begin{adjustwidth}{ -4 cm}{}
+\noindent $\begin{bmatrix} \frac{-dx_{lm}(k)}{\sqrt{dx_{lm}(k)^2+dy_{lm}(k)^2}}  &  \frac{-dy_{lm}(k)}{\sqrt{dx_{lm}(k)^2+dy_{lm}(k)^2}} & 0 & \frac{dx_{lm}(k)}{\sqrt{dx_{lm}(k)^2+dy_{lm}(k)^2}}  &  \frac{dy_{lm}(k)}{\sqrt{dx_{lm}(k)^2+dy_{lm}(k)^2}} & 0 & 0 & 0 & 0\\
+		  \frac{ dy_{lm}(k)}{ dx_{lm}(k)^2+dy_{lm}(k)^2 }  &   \frac{-dx_{lm}(k)}{ dx_{lm}(k)^2+dy_{lm}(k)^2 }   &  -1  &   \frac{ -dy_{lm}(k)}{ dx_{lm}(k)^2+dy_{lm}(k)^2 }  &  \frac{dx_{lm}(k)}{ dx_{lm}(k)^2+dy_{lm}(k)^2 }  &  0  &  0 &  0 &  0 \\
+							\frac{-dx_{mot}(k)}{\sqrt{dx_{mot}(k)^2+dy_{mot}(k)^2}}  &  \frac{-dy_{mot}(k)}{\sqrt{dx_{mot}(k)^2+dy_{mot}(k)^2}}  &  0  &  0  &  0  &  \frac{dx_{mot}(k)}{\sqrt{dx_{mot}(k)^2+dy_{mot}(k)^2}}  &  \frac{dy_{mot}(k)}{\sqrt{dx_{mot}(k)^2+dy_{mot}(k)^2}} &  0 &  0 \\
+							  \frac{ dy_{mot}(k)}{ dx_{mot}(k)^2+dy_{mot}(k)^2 }  &  \frac{ -dx_{mot}(k)}{ dx_{mot}(k)^2+dy_{mot}(k)^2 }  &  -1  &  0  &  0  &  \frac{-dy_{mot}(k)}{ dx_{mot}(k)^2+dy_{mot}(k)^2 } &  \frac{ dx_{mot}(k)}{ dx_{mot}(k)^2+dy_{mot}(k)^2 } &  0 &  0 
+\end{bmatrix}$ 
+\end{adjustwidth}
+
+
+where
+
+
+$dx_{lm}(k)=x_{lm}(k)-x_{r}(k)$, 
+
+$dy_{lm}(k)=y_{lm}(k)-y_{r}(k)$, 
+
+$dx_{mot}(k)=x_{mot}(k)-x_{r}(k)$,
+
+ $dy_{mot}(k)=y_{mot}(k)-y_{r}(k)$.
+\\
+
+Updating step:
+
+$P(k+1|k) = (P(k+1|k) + P(k+1|k)^{T})*0.5$,
+
+$S = H*P(k+1|k)*H^{T} + R$,
+
+$K = P(k+1|k)*H^{T}*(S)^{-1}$,
+
+$X(k+1|k+1) = X(k+1|k) + K*v$,
+
+$P(k+1|k+1) = P(k+1|k) - K*S*K^{T}$. 
+
+
+\section{Inialization}
+\subsection{New landmark}
+When another new landmark is observed, the state vector will increase two new elements and its corresponding covaraince will also be added.
+
+\noindent New landmark is $ X_{lm1} =  \begin{bmatrix} x_{lm1} \\ y_{lm1} \end{bmatrix}$.
+
+\noindent Its new observation is $z_{lm1} = \begin{bmatrix} r_{lm1} \\ b_{lm1} \end{bmatrix}$.
+\\
+Asuming the mapping function from $X$ to $X_{lm1}$ is $X_{lm1} = f(X,z_{lm1})$
+\\
+\noindent $\begin{bmatrix} x_{lm1} \\ y_{lm1} \end{bmatrix}$ = $\begin{bmatrix} x_{r} \\ y_{r} \end{bmatrix}$  +  $\begin{bmatrix}  cos(b_{lm1}+\alpha_{r})*r_{lm1}\\ sin(b_{lm1}+\alpha_{r})*r_{lm1} \end{bmatrix}$.
+\\
+\\
+\noindent The jacobian matrix from $X$ to $X_{lm1}$ is 
+
+
+\noindent $G_{v}$ = $  \begin{bmatrix} 1 & 0 & - sin(b_{lm1}+\alpha_{r})*r_{lm1} & 0 & 0 & 0 & 0\\
+                             0 & 1 &  cos(b_{lm1}+\alpha_{r})*r_{lm1}  & 0 & 0 & 0 & 0\end{bmatrix}$
+
+
+                       
+\noindent $G_{r}$ = $  \begin{bmatrix} 1 & 0 & - sin(b_{lm1}+\alpha_{r})*r_{lm1}\\
+                             0 & 1 &  cos(b_{lm1}+\alpha_{r})*r_{lm1} \end{bmatrix}$
+\\
+\\
+\noindent The jacobian matrix from $z_{lm1}$ to $X_{lm1}$ is 
+
+$G_{u}$ = $  \begin{bmatrix}  cos(b_{lm1}+\alpha_{r})    & - sin(b_{lm1}+\alpha_{r})*r_{lm1}  \\
+                                 sin(b_{lm1}+\alpha_{r}) &  cos(b_{lm1}+\alpha_{r})*r_{lm1} \end{bmatrix}$
+
+\noindent The new state vector is $\begin{bmatrix} x_{r}, y_{r}, \alpha_{r}, x_{lm}, y_{lm}, x_{lm1}, y_{lm1},  x_{mot}, y_{mot}, \alpha_{mot}, v_{mot} \end{bmatrix}^{T}$, 
+\\
+
+\noindent And augmented covariance matrix $P$ = $\begin{bmatrix} P_{rr} & P_{rlm} & P_{rlm1} & P_{rmot}\\
+										   P_{lmr}& P_{lmlm} & P_{lmlm1} & P_{lmmot}\\
+										   P_{lm1r}& P_{lm1lm} & P_{lm1lm1} & P_{lm1mot}\\ 
+										   P_{motr}& P_{motlm} & P_{motlm} & P_{motmot}\end{bmatrix}$
+\\
+\\
+\noindent $P_{lm1lm1} = G_{v}*P_{rr}*G_{v}^{T} + G_{u}*R*G_{u}^{T}$, where $R$ is sensor noise.
+\\
+
+\noindent $[P_{rlm1}  P_{lmlm1}  P_{motlm1}] = G_{v}*\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
+										   P_{lmr}& P_{lmlm}  & P_{lmmot}\\
+										   P_{motr}& P_{motlm}  & P_{motmot}\end{bmatrix}$ =
+										   
+										    $  \begin{bmatrix} G_{r} & 0 & 0 \end{bmatrix}$*$\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
+										   P_{lmr}& P_{lmlm}  & P_{lmmot}\\
+										   P_{motr}& P_{motlm}  & P_{motmot}\end{bmatrix}$\\
+\noindent $P_{lm1r} = P_{rlm1}^{T} = G_{r}*P_{rr}$
+\\										   									   
+\noindent $P_{lm1lm} = P_{lmlm1}^{T} = G_{r}*P_{rlm}$
+\\
+\noindent $P_{lm1mot} = P_{motlm1}^{T} = G_{r}*P_{rmot}$
+
+\subsection{New moving object}
+When another new moving object is observed, the state vector will increase foure new elements and its corresponding covaraince will also be added.
+
+\noindent New moving object is $ X_{mot1} =  \begin{bmatrix} x_{mot1} \\ y_{mot1} \\ \alpha_{mot1} \\ v_{mot1} \end{bmatrix} $.
+
+\noindent Its new observation is $z_{mot1} = \begin{bmatrix} r_{mot1} \\ b_{mot1} \end{bmatrix}$.
+\\
+Asuming the mapping function from $X$ to $X_{lm1}$ is $X_{mot1} = f(X,z_{mot1})$
+\\
+\noindent $\begin{bmatrix} x_{mot1} \\ y_{mot1} \\ \alpha_{mot1} \\ v_{mot1} \end{bmatrix}$ = $\begin{bmatrix} x_{r} \\ y_{r} \\ 0 \\ 0 \end{bmatrix}$  +  $\begin{bmatrix}  cos(b_{mot1}+\alpha_{r})*r_{mot1}\\ sin(b_{mot1}+\alpha_{r})*r_{mot1}  \\ -(\alpha_{r}+b_{mot1}) \\ 0 \end{bmatrix}$.
+\\
+\\
+\noindent The jacobian matrix from $X$ to $X_{lm1}$ is 
+
+
+\noindent $G_{mv}$ = $  \begin{bmatrix} 1 & 0 & - sin(b_{mot1}+\alpha_{r})*r_{mot1} & 0 & 0 & 0 & 0\\
+                             0 & 1 &  cos(b_{mot1}+\alpha_{r})*r_{mot1}  & 0 & 0 & 0 & 0 \\
+							0 & 0 & -1 &  0 & 0 & 0 & 0 \\
+							0 & 0  & 0 & 0 &  0 & 0 & 0	                             
+                             \end{bmatrix}$
+
+                       
+\noindent $G_{mr}$ = $  \begin{bmatrix} 1 & 0 & - sin(b_{mot1}+\alpha_{r})*r_{mot1}\\
+                             0 & 1 &  cos(b_{mot1}+\alpha_{r})*r_{mot1} \\
+                             0 & 0 & -1 \\
+                             0 & 0  & 0 \end{bmatrix}$
+\\
+\\
+\noindent The jacobian matrix from $z_{mot1}$ to $X_{mot1}$ is \\
+$G_{mu}$ = $  \begin{bmatrix}  cos(b_{mot1}+\alpha_{r})    & - sin(b_{mot1}+\alpha_{r})*r_{mot1}  \\
+                               sin(b_{mot1}+\alpha_{r})  &  cos(b_{mot1}+\alpha_{r})*r_{mot1}   \\
+                               0   & -1  \\
+                               0  &  0   \end{bmatrix}$
+\\
+\\
+\noindent And augmented covariance matrix\\
+ $P$ = $\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot} & P_{rmot1}\\
+										   P_{lmr}& P_{lmlm} & P_{lmmot} & P_{lmmot1}\\
+										   P_{motr}& P_{motlm} & P_{motmot} & P_{motmot1}\\ 
+										   P_{mot1r}& P_{mot1lm} & P_{mot1mot} & P_{mot1mot1}\end{bmatrix}$  \\                               
+$P_{mot1mot1} = G_{mr}*P_{rr}*G_{mr}^{T} + G_{mu}*R*G_{mu}^{T}$, where $R$ is sensor noise.\\
+
+\noindent Similarly,\\
+\noindent $[P_{rmot1}  P_{lmmot1}  P_{motmot1}] = G_{v}*\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
+										   P_{lmr}& P_{lmlm}  & P_{lmmot}\\
+										   P_{motr}& P_{motlm}  & P_{motmot}\end{bmatrix}$ =
+										   
+										    $  \begin{bmatrix} G_{mr} & 0 & 0 \end{bmatrix}$*$\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
+										   P_{lmr}& P_{lmlm}  & P_{lmmot}\\
+										   P_{motr}& P_{motlm}  & P_{motmot}\end{bmatrix}$\\										   
+$P_{rmot1} = P_{mot1r}^{T} = G_{mr}*P_{rr} $  \\
+$P_{lmmot1} = P_{motlmr}^{T} = G_{mr}*P_{rlm} $  \\
+$P_{motmot1} = P_{mot1mot}^{T} = G_{mr}*P_{rmot} $  \\ 
 
 \end{document}

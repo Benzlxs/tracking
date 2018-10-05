@@ -27,6 +27,7 @@ end
 function [x,P]= add_one_z(x,P_old,z,R, ind)
 
 len= ind;
+all_len = length(x);
 r= z(1); b= z(2);
 s= sin(x(3)+b); 
 c= cos(x(3)+b);
@@ -53,6 +54,14 @@ if len>3
     rnm= 4:len;
     P(rng,rnm)= Gv*P(1:3,rnm); % map to feature xcorr
     P(rnm,rng)= P(rng,rnm)';
+end
+
+% there is moving objects
+if all_len > ind
+    rnm = (ind+1):all_len;
+    rnm_new = 2+rnm;
+    P(rng, rnm_new) = Gv*P_old(1:3,rnm);
+    P(rnm_new, rng) = P(rng, rnm_new)';
 end
 
 P(ind+3:end, ind+3:end) = P_old(ind+1:end, ind+1:end);

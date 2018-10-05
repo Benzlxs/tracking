@@ -66,7 +66,7 @@ P(rng, rng) = P_temp;
 P(rng,1:3) = Gv*P(1:3,1:3);
 P(1:3,rng)= P(rng,1:3)';
 rnm = 4:len;
-P(rng, rnm) = 0;% Gv*P(1:3,rnm); % assuming that landmark and moving object are independent
+P(rng, rnm) = Gv*P(1:3,rnm); % assuming that landmark and moving object are independent
 P(rnm, rng) = P(rng, rnm)';
 
 

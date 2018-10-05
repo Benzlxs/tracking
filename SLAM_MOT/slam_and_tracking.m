@@ -49,9 +49,9 @@ initialization_params;
 %           0,   0,     1,    0;
 %           0,   0,     0,    1] ; 
 
-Q_trk = 4* Q_trk;
-
-R_trk =  [sigmaR^2 0; 0 sigmaB^2];
+% Q_trk = 4*Q_trk;
+% 
+% R_trk =  [sigmaR^2 0; 0 sigmaB^2];
       
 n_obj_pre = 0;
 
@@ -77,13 +77,12 @@ while iwp ~= 0
         
     %% EKF predict step of SLAM and moving object tracking
     [x,P]= predict_slam_mot( x, P, Vn, Gn, QE, WHEELBASE, dt, num_lm, Q_trk);
-    
+
     %% EKF update step
     dtsum= dtsum + dt;
     if dtsum >= DT_OBSERVE
         %% Get simulated Observation
-        debug = debug + 1
-    
+        debug = debug + 1    
         dtsum= 0;
         % slam observation
         [z_lm ,ftag_visible, z_mot_obj, ind_mot_z]= get_observations_slam_mot(xtrue, lm, ftag, MAX_RANGE, num_lm, track_obj, tag_trk_obj);
@@ -112,9 +111,6 @@ while iwp ~= 0
             [x,P]= update_slam_mot(x,P,zf, RE, idf, zf_mot, R_trk, idf_mot, SWITCH_BATCH_UPDATE, num_lm);        
         end
         
-        if mod(debug,1)==0
-            eigens = eigs(P)
-        end
         % [x_trk , P_trk]= update_tracking_obj(x(1:3), x_trk , P_trk, zf_mot, RE, idf_mot);        
         %% augmentation and deleting
         [x,P]= augment_slam_mot_lm(x,P, zn,RE, num_lm); 
@@ -130,8 +126,13 @@ while iwp ~= 0
         else
             [x, P, count_trk, ind_trk_obj] = del_slam_mot(x, P, count_trk, num_del, ind_trk_obj, num_lm);
         end
+        
+        
+%       if mod(debug,1)==0
+%             eigens = eigs(P)
+%       end
     end
-    
+  
     %% plotting
     % offline data store
     data= store_data(data, x, P, xtrue);
@@ -141,7 +142,7 @@ while iwp ~= 0
     xv= transformtoglobal(veh,x(1:3));
     set(h.xt, 'xdata', xt(1,:), 'ydata', xt(2,:))
     set(h.xv, 'xdata', xv(1,:), 'ydata', xv(2,:))
-    set(h.xf, 'xdata', x(4:2:end), 'ydata', x(5:2:end))
+    set(h.xf, 'xdata', x(4:2:(3+2*num_lm)), 'ydata', x(5:2:(num_lm)))
     
     % plotting tracked objects
     num_mot = (size(x,1) - 3 - num_lm*2)/4;
@@ -161,7 +162,7 @@ while iwp ~= 0
         set( fig_hs(i).car,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
         p_conv= make_covariance_ellipses_tracking_obj(x(ind:ind+3), P(ind:ind+3,ind:ind+3));
         %set(track_obj(ij).H.cov_t1,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
-        set( fig_hs(i).elliphse,'xdata',real(p_conv(1,:)), 'ydata', real(p_conv(2,:)));
+        set( fig_hs(i).elliphse,'xdata',p_conv(1,:), 'ydata', p_conv(2,:));
         
         % vanish the deleted objects 
         %vanish_img(track_obj, ind_trk_obj, count_trk,num_del )
@@ -175,7 +176,7 @@ while iwp ~= 0
     ptmp= make_covariance_ellipses(x(1:3),P(1:3,1:3));
     pcov(:,1:size(ptmp,2))= ptmp;
     if dtsum==0
-        set(h.cov, 'xdata', real(pcov(1,:)), 'ydata', real(pcov(2,:))) ;
+        set(h.cov, 'xdata', pcov(1,:), 'ydata', pcov(2,:)) ;
         pcount= pcount+1;
         if pcount == 15
             set(h.pth, 'xdata', data.path(1,1:data.i), 'ydata', data.path(2,1:data.i))    
@@ -188,7 +189,7 @@ while iwp ~= 0
                 plines = [plines pp];
             end
             set(h.obs, 'xdata', plines(1,:), 'ydata', plines(2,:))
-            pcov= make_covariance_ellipses(x,P);
+            pcov= make_covariance_ellipses(x(1:(3+2*num_lm)), P(1:(3+2*num_lm),1:(3+2*num_lm)));
         end
     end
     drawnow
@@ -228,7 +229,7 @@ end
 %
 %
 
-function p= make_covariance_ellipses(x,P)
+function p= make_covariance_ellipses(x, P)
 % compute ellipses for plotting state covariances
 N= 10;
 inc= 2*pi/N;

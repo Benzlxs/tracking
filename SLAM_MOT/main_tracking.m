@@ -66,7 +66,7 @@ while iwp ~= 0
     
     %% EKF predict step
     [x,P]= predict (x,P, Vn,Gn,QE, WHEELBASE,dt);
-    
+    %[x,P]=predict_test(x,P, Vn,Gn,QE, WHEELBASE,dt);
     %% prediction of moving objects
     n_obj = size(x_trk,1);
     for i =1:n_obj
@@ -100,7 +100,10 @@ while iwp ~= 0
         end
         [x,P]= augment(x,P, zn,RE); 
         num_lm = num_lm + size(zn,2);
-        
+
+        % check covariance is stable or not
+        eigens = eigs(P)
+       
         %% tracking system
         for k = 1:n_obj
             count_trk(k) = count_trk(k) + 1;
@@ -329,7 +332,7 @@ hold on
 plot(lm(1,:),lm(2,:),'b*')
 
 xlabel('metres'), ylabel('metres')
-set(fig, 'name', 'EKF-SLAM Simulator')
+set(fig, 'name', 'SLAM_MOT simulator')
 set(fig,'units','points','position',[100,100,800,800])
 
 end
