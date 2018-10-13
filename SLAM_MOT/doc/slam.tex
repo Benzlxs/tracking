@@ -200,7 +200,7 @@ $G_{u}$ = $  \begin{bmatrix}  cos(b_{lm1}+\alpha_{r})    & - sin(b_{lm1}+\alpha_
 										   P_{motr}& P_{motlm} & P_{motlm} & P_{motmot}\end{bmatrix}$
 \\
 \\
-\noindent $P_{lm1lm1} = G_{v}*P_{rr}*G_{v}^{T} + G_{u}*R*G_{u}^{T}$, where $R$ is sensor noise.
+\noindent $P_{lm1lm1} = G_{v}*P*G_{v}^{T} + G_{u}*R*G_{u}^{T}$, where $R$ is sensor noise.
 \\
 
 \noindent $[P_{rlm1}  P_{lmlm1}  P_{motlm1}] = G_{v}*\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
@@ -210,11 +210,11 @@ $G_{u}$ = $  \begin{bmatrix}  cos(b_{lm1}+\alpha_{r})    & - sin(b_{lm1}+\alpha_
 										    $  \begin{bmatrix} G_{r} & 0 & 0 \end{bmatrix}$*$\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
 										   P_{lmr}& P_{lmlm}  & P_{lmmot}\\
 										   P_{motr}& P_{motlm}  & P_{motmot}\end{bmatrix}$\\
-\noindent $P_{lm1r} = P_{rlm1}^{T} = G_{r}*P_{rr}$
+\noindent $P_{lm1r} = P_{rlm1}^{T} = E[(X_{lm1}- \hat{X}_{lm1})(X_{r}- \hat{X}_{r})^{T}] = G_{r}*P_{rr}$
 \\										   									   
-\noindent $P_{lm1lm} = P_{lmlm1}^{T} = G_{r}*P_{rlm}$
+\noindent $P_{lm1lm} = P_{lmlm1}^{T} = E[(X_{lm}- \hat{X}_{lm})(X_{lm1}- \hat{X}_{lm1})^{T}] = G_{r}*P_{rlm}$
 \\
-\noindent $P_{lm1mot} = P_{motlm1}^{T} = G_{r}*P_{rmot}$
+\noindent $P_{lm1mot} = P_{motlm1}^{T} = E[(X_{mot}- \hat{X}_{mot})(X_{lm1}- \hat{X}_{lm1})^{T}] = G_{r}*P_{rmot}$
 
 \subsection{New moving object}
 When another new moving object is observed, the state vector will increase foure new elements and its corresponding covaraince will also be added.
@@ -256,7 +256,7 @@ $G_{mu}$ = $  \begin{bmatrix}  cos(b_{mot1}+\alpha_{r})    & - sin(b_{mot1}+\alp
 										   P_{lmr}& P_{lmlm} & P_{lmmot} & P_{lmmot1}\\
 										   P_{motr}& P_{motlm} & P_{motmot} & P_{motmot1}\\ 
 										   P_{mot1r}& P_{mot1lm} & P_{mot1mot} & P_{mot1mot1}\end{bmatrix}$  \\                               
-$P_{mot1mot1} = G_{mr}*P_{rr}*G_{mr}^{T} + G_{mu}*R*G_{mu}^{T}$, where $R$ is sensor noise.\\
+$P_{mot1mot1} = G_{mr}*P*G_{mr}^{T} + G_{mu}*R*G_{mu}^{T}$, where $R$ is sensor noise.\\
 
 \noindent Similarly,\\
 \noindent $[P_{rmot1}  P_{lmmot1}  P_{motmot1}] = G_{v}*\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
@@ -266,8 +266,8 @@ $P_{mot1mot1} = G_{mr}*P_{rr}*G_{mr}^{T} + G_{mu}*R*G_{mu}^{T}$, where $R$ is se
 										    $  \begin{bmatrix} G_{mr} & 0 & 0 \end{bmatrix}$*$\begin{bmatrix} P_{rr} & P_{rlm} & P_{rmot}\\
 										   P_{lmr}& P_{lmlm}  & P_{lmmot}\\
 										   P_{motr}& P_{motlm}  & P_{motmot}\end{bmatrix}$\\										   
-$P_{rmot1} = P_{mot1r}^{T} = G_{mr}*P_{rr} $  \\
-$P_{lmmot1} = P_{motlmr}^{T} = G_{mr}*P_{rlm} $  \\
-$P_{motmot1} = P_{mot1mot}^{T} = G_{mr}*P_{rmot} $  \\ 
+$P_{rmot1} = P_{mot1r}^{T} = E[(X_{mot1}- \hat{X}_{mot1})(X_{r}- \hat{X}_{r})^{T}] = G_{mr}*P_{rr} $  \\
+$P_{lmmot1} = P_{mot1lm}^{T} = E[(X_{mot1}- \hat{X}_{mot1})(X_{lm}- \hat{X}_{lm})^{T}] = G_{mr}*P_{rlm} $  \\
+$P_{mot1mot} = P_{mot1mot}^{T} = E[(X_{mot1}- \hat{X}_{mot1})(X_{mot}- \hat{X}_{mot})^{T}] = G_{mr}*P_{rmot} $  \\ 
 
 \end{document}
