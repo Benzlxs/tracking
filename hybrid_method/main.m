@@ -72,7 +72,22 @@ while iwp ~= 0
     % prediction
     [X  P]= process_model_hybrid(X, P, dt, Q_trk);    
     
-    
+    dtsum= dtsum + dt;
+    % observation to update
+    if dtsum >= DT_OBSERVE
+        dtsum= 0;
+        for i  =1:N_track_obj            
+            if PATTEN == 0                                                           
+                % ED 
+                % get noisy measuremnt
+                z = get_noisy_measurement_ed(track_obj(i).x, R_ed);
+                % Kalman filte updating
+            else
+                % CD
+                z = get_noisy_measurement_cd(track_obj(i).x, R_cd);
+            end
+        end
+    end
     
 end
 
