@@ -29,6 +29,9 @@ Q_trk = [ x_noise^2,   0,     0,       0;
           0,    0, ang_velo^2,   0;
           0,    0,     0, acc_noise^2] ; 
 
+Q_trk_ed = Q_trk;
+Q_trk_cd = 5*Q_trk;
+
 % control noises
 sigmaV= 0.3; % m/s
 sigmaG= (3.0*pi/180); % radians
@@ -52,16 +55,16 @@ AT_WAYPOINT= 1.0; % metres, distance from current waypoint at which to switch to
 NUMBER_LOOPS= 2; % number of loops through the waypoint list
 
 % hybrid model parameters
-sigmaX = 0.05; % meter
-sigmaY = 0.05; % meter
+sigmaX = 0.08; % meter
+sigmaY = 0.08; % meter
 sigmaB = (1.0*pi/180); % radians
 R_ed = [sigmaX^2 0 0; 0 sigmaY^2 0; 0 0 sigmaB^2];
-sigmaX = 0.5; % meter
-sigmaY = 0.5; % meter
+sigmaX = 0.2; % meter
+sigmaY = 0.2; % meter
 R_cd = [sigmaX^2 0; 0 sigmaY^2];
 
 R_b = (10.0*pi/180)^2; % bearing inializaiton uncertainty
 R_v = (2.0)^2;  % velocity inialization uncertainty, there is no observation about it at beginning, so it should be large.
 
 % Pattern of hybrid method
-PATTEN = 0; % 0: ED for inialization, 1: CD for inialization
+PATTEN = 1; % 0: ED for inialization, 1: CD for inialization

@@ -44,8 +44,8 @@ for i = (num_z_lm+1):lenz
     iidf = i - num_z_lm;
     [zp,H(ii,:)]= observe_model_slam_mot(x, idf_mot(iidf), num_lm);
     
-   v(ii)= [zf_mot(1,iidf)-zp(1);
-           pi_to_pi(zf_mot(2,iidf)-zp(2))];
+    v(ii)= [zf_mot(1,iidf)-zp(1);
+            pi_to_pi(zf_mot(2,iidf)-zp(2))];
 
     RR(ii,ii)= R_mot;
 end

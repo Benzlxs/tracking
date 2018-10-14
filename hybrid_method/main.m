@@ -58,7 +58,7 @@ iwp = 1 ;
 
 % inialize the tracking object state
 [X, P] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN);
-
+dtsum=0;
 while iwp ~= 0
     for j=1:N_track_obj
         [track_obj(j).G, track_obj(j).iwp]= compute_steering(track_obj(j).x, track_obj(j).wp, track_obj(j).iwp, AT_WAYPOINT, track_obj(j).G, RATEG, MAXG, dt);
@@ -70,7 +70,11 @@ while iwp ~= 0
     end
     
     % prediction
-    [X  P]= process_model_hybrid(X, P, dt, Q_trk);    
+    if PATTEN == 0
+        [X  P]= process_model_hybrid(X, P, dt, Q_trk_ed);    
+    else
+        [X  P]= process_model_hybrid(X, P, dt, Q_trk_cd);  
+    end
     
     dtsum= dtsum + dt;
     % observation to update
@@ -82,17 +86,64 @@ while iwp ~= 0
                 % get noisy measuremnt
                 z = get_noisy_measurement_ed(track_obj(i).x, R_ed);
                 % Kalman filte updating
+                [x p] = update_ed(X(i,:), squeeze(P(i,:,:)), z, R_ed);
+                X(i,:) = x;
+                P(i,:,:) = p;
             else
                 % CD
                 z = get_noisy_measurement_cd(track_obj(i).x, R_cd);
+                % Kalman filte updating
+                [x p] = update_cd(X(i,:), squeeze(P(i,:,:)), z, R_cd);
+                X(i,:) = x;
+                P(i,:,:) = p;
             end
         end
     end
-    
+    %% plotting
+    % offline data store
+        
+    for i =1:N_track_obj
+        %TO-DO: predict moving object one by one
+        x_obj=transformtoglobal(track_obj(i).size, X(i,:));
+        %set(track_obj(ij).H.xv_t1,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
+        set( fig_hs(i).car,'xdata', x_obj(1,:), 'ydata', x_obj(2,:));
+        p_conv= make_covariance_ellipses_tracking_obj(X(i,:), squeeze(P(i,:,:)));
+        %set(track_obj(ij).H.cov_t1,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
+        set( fig_hs(i).elliphse,'xdata',p_conv(1,:), 'ydata', p_conv(2,:));
+    end
+    pause(0.05);
+   
 end
 
 
 end
+
+%
+%
+function p= make_covariance_ellipses_tracking_obj(x,P)
+% compute ellipses for plotting state covariances
+N= 10;
+inc= 2*pi/N;
+phi= 0:inc:2*pi;
+
+
+p= zeros (2,1*(N+2));
+
+ii=1:N+2;
+p(:,ii)= make_ellipse(x(1:2), P(1:2,1:2), 2, phi);
+
+end
+%
+%
+function p= make_ellipse(x,P,s, phi)
+% make a single 2-D ellipse of s-sigmas over phi angle intervals 
+r= sqrtm(P);
+a= s*r*[cos(phi); sin(phi)];
+p(2,:)= [a(2,:)+x(2) NaN];
+p(1,:)= [a(1,:)+x(1) NaN];
+end
+%
+%
 
 function [X, P] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN)
 %{
