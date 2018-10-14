@@ -293,7 +293,6 @@ data.state(i).x= x;
 %data.state(i).P= P;
 data.state(i).P= diag(P);
 end
-
 %
 %
 

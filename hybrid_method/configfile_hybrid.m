@@ -68,3 +68,4 @@ R_v = (2.0)^2;  % velocity inialization uncertainty, there is no observation abo
 
 % Pattern of hybrid method
 PATTEN = 1; % 0: ED for inialization, 1: CD for inialization
+

@@ -30,3 +30,14 @@ for i =1:set_n
     fig_hs(i).car = patch(0,0,'r'); % tracked vehicle estimate
     fig_hs(i).elliphse= plot(0,0,'b'); % covariance ellipses
 end
+
+for i = N_track_obj
+    h1 = figure(2*i)
+    fig_dif(i).x = plot(0,0,'b');
+    xlabel('count'), ylabel('X error')
+    set(h1, 'name', sprintf('the error of object %d',i));
+    h2 = figure(2*i+1)
+    fig_dif(i).p = plot(0,0,'r');
+    xlabel('count'), ylabel('P uncertainty')
+    set(h2, 'name', sprintf('the uncertainty of object %d',i));        
+end

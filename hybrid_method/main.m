@@ -50,14 +50,15 @@ if nargin == 0
 end
 
 configfile_hybrid;
-fig = figs_inialization(WP, MAP_H, MAP_W);
+h = figs_inialization(WP, MAP_H, MAP_W);
 moving_objs;
 
 dt = DT_CONTROLS;
 iwp = 1 ;
 
 % inialize the tracking object state
-[X, P] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN);
+[X, P, data] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN);
+
 dtsum=0;
 while iwp ~= 0
     for j=1:N_track_obj
@@ -101,7 +102,7 @@ while iwp ~= 0
     end
     %% plotting
     % offline data store
-        
+    plines = [];
     for i =1:N_track_obj
         %TO-DO: predict moving object one by one
         x_obj=transformtoglobal(track_obj(i).size, X(i,:));
@@ -110,14 +111,42 @@ while iwp ~= 0
         p_conv= make_covariance_ellipses_tracking_obj(X(i,:), squeeze(P(i,:,:)));
         %set(track_obj(ij).H.cov_t1,'xdata', p_conv(1,:), 'ydata', p_conv(2,:));
         set( fig_hs(i).elliphse,'xdata',p_conv(1,:), 'ydata', p_conv(2,:));
+        % set
+        data= store_data(data, X(i,:), squeeze(P(i,:,:)), track_obj(i).x, i);
+        
+        % plotting the how difference and uncertainty change with time
+        set( fig_dif(i).x,'xdata', 1:data(j).i, 'ydata',  data(j).error(1:data(j).i));
+        set( fig_dif(i).p,'xdata', 1:data(j).i, 'ydata',  data(j).uncertain(1:data(j).i));
+        set(  h.obs, 'xdata', [0 X(i,1)], 'ydata',[0 X(i,2)] )
+        
     end
     pause(0.05);
+    
    
 end
-
-
 end
 
+%
+%
+
+function data= store_data(data, x, P, xtrue, j)
+% add current data to offline storage
+CHUNK= 5000;
+if data(j).i == size(data(j).path,2) % grow array in chunks to amortise reallocation
+    data(j).path= [data(j).path zeros(3,CHUNK)];
+    data(j).true= [data(j).true zeros(3,CHUNK)];
+end
+i= data(j).i + 1;
+data(j).i= i;
+data(j).path(:,i)= x(1:3);
+data(j).true(:,i)= xtrue;
+data(j).state(i).x= x;
+%data.state(i).P= P;
+data(j).state(i).P= diag(P);
+data(j).error(i) = mean(abs(x(1:3)' - xtrue));
+data(j).uncertain(i) = mean(sqrt(diag(P)));
+
+end
 %
 %
 function p= make_covariance_ellipses_tracking_obj(x,P)
@@ -145,7 +174,7 @@ end
 %
 %
 
-function [X, P] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN)
+function [X, P, data] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN)
 %{
     function descriptions;
         this is to inialize states of moving object
@@ -162,6 +191,7 @@ function [X, P] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN)
 %}
 X = [];
 P = [];
+data = [];
 N_track_obj = length(track_obj);
 p = zeros(4, 4);
 for i  =1:N_track_obj
@@ -185,11 +215,28 @@ for i  =1:N_track_obj
        X(i,:,:) = x;
        P(i,:,:) = p;       
     end
+    data= initialise_store(data,x(1:3),p,x(1:3),i); % stored data for off-line
 end
 
 end
 
-function fig = figs_inialization(wp, map_h, map_w)
+%
+% Initial data
+function data= initialise_store(data,x,P, xtrue,i)
+% offline storage initialisation
+data(i).i=1;
+data(i).path= x;
+data(i).true= xtrue;
+data(i).state(1).x= x;
+%data.state(1).P= P;
+data(i).state(1).P= diag(P);
+data(i).error(i) = mean(abs(x(1:3) - xtrue));
+data(i).uncertain(i) = mean(sqrt(diag(P)));
+end
+%
+%
+
+function h = figs_inialization(wp, map_h, map_w)
 %{
     function descriptions: 
         create the map including waypoints
@@ -202,14 +249,15 @@ W = map_w;
 H = map_h; 
 C = [0.5, 0.5, 0.5];  % color for map
 
-fig = figure;
+fig = figure(1);
 axis([-W, W, -H, H]);
 hold on
 wp=wp';
-plot(wp(1,:),wp(2,:), 'g')
+h.map = plot(wp(1,:),wp(2,:), 'g')
 hold on
 
 xlabel('metres'), ylabel('metres')
 set(fig, 'name', 'Hybrid Simulator')
 set(fig,'units','points','position',[100,100,800,800])
+h.obs= plot(0,-H,'b');%,'erasemode','xor'); % observations
 end
