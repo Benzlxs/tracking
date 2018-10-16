@@ -53,6 +53,9 @@ x = [0; -160; 0];
 % set tracked objects
 track_objs;
 
+figure(2)
+uncerti = plot(0,0,'b');
+uncc = [0];
 % initialise other variables and constants
 dt= DT_CONTROLS; % change in time between predicts
 dtsum= 0; % change in time since last observation
@@ -64,7 +67,7 @@ data= initialise_store(x,P,x); % stored data for off-line
 QE= Q; RE= R; if SWITCH_INFLATE_NOISE, QE= 2*Q; RE= 8*R; end % inflate estimated noises (ie, add stabilising noise)
 if SWITCH_SEED_RANDOM, randn('state',SWITCH_SEED_RANDOM), end
 
-% main loop 
+% main loop
 while iwp ~= 0
     
     % tracking objects 
@@ -115,8 +118,10 @@ while iwp ~= 0
     end
     
     % offline data store
-    data= store_data(data, x, P, xtrue);
-    
+    [data uncc]= store_data(data, x, P, xtrue, uncc);
+    %
+    set( uncerti, 'xdata', 1:data.i, 'ydata',  uncc(1:data.i));
+    %
     % plots
     xt= transformtoglobal(veh,xtrue);
     xv= transformtoglobal(veh,x(1:3));
@@ -193,7 +198,7 @@ end
 
 %
 %
-function data= store_data(data, x, P, xtrue)
+function [data uncc] = store_data(data, x, P, xtrue, uncc)
 % add current data to offline storage
 CHUNK= 5000;
 if data.i == size(data.path,2) % grow array in chunks to amortise reallocation
@@ -207,6 +212,7 @@ data.true(:,i)= xtrue;
 data.state(i).x= x;
 %data.state(i).P= P;
 data.state(i).P= diag(P);
+uncc = [uncc mean(sqrt(diag(P(1:3,1:3))))];
 end
 
 %

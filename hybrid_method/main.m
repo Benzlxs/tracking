@@ -56,6 +56,9 @@ moving_objs;
 dt = DT_CONTROLS;
 iwp = 1 ;
 
+% Pattern of hybrid method
+PATTEN(1:N_track_obj) = 0; % 0: ED for inialization, 1: CD for inialization
+
 % inialize the tracking object state
 [X, P, data] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN);
 
@@ -69,20 +72,20 @@ while iwp ~= 0
         xxtt = transformtoglobal(track_obj(j).size, track_obj(j).x);
         set(track_obj(j).H.xt_t1, 'xdata', xxtt(1,:), 'ydata', xxtt(2,:))
     end
-    
     % prediction
-    if PATTEN == 0
-        [X  P]= process_model_hybrid(X, P, dt, Q_trk_ed);    
-    else
-        [X  P]= process_model_hybrid(X, P, dt, Q_trk_cd);  
-    end
+    % if PATTEN == 0
+    %    [X  P]= process_model_hybrid(X, P, dt, Q_trk_ed);    
+    % else
+    %     [X  P]= process_model_hybrid(X, P, dt, Q_trk_cd);  
+    % end
+    [X  P]= process_model_hybrid(X, P, dt, Q_trk_ed, Q_trk_cd, PATTEN);    
     
     dtsum= dtsum + dt;
     % observation to update
     if dtsum >= DT_OBSERVE
         dtsum= 0;
         for i  =1:N_track_obj            
-            if PATTEN == 0                                                           
+            if PATTEN(i) == 0                                                           
                 % ED 
                 % get noisy measuremnt
                 z = get_noisy_measurement_ed(track_obj(i).x, R_ed);
@@ -115,11 +118,24 @@ while iwp ~= 0
         data= store_data(data, X(i,:), squeeze(P(i,:,:)), track_obj(i).x, i);
         
         % plotting the how difference and uncertainty change with time
-        set( fig_dif(i).x,'xdata', 1:data(j).i, 'ydata',  data(j).error(1:data(j).i));
-        set( fig_dif(i).p,'xdata', 1:data(j).i, 'ydata',  data(j).uncertain(1:data(j).i));
-        set(  h.obs, 'xdata', [0 X(i,1)], 'ydata',[0 X(i,2)] )
+        set( fig_dif(i).x,'xdata', 1:data(i).i, 'ydata',  data(i).error(1:data(i).i));
+        set( fig_dif(i).p,'xdata', 1:data(i).i, 'ydata',  data(i).uncertain(1:data(i).i));
+        set(  h.obs, 'xdata', [0 X(i,1)], 'ydata',[0 X(i,2)] );
         
+        % plotting vehicle trajectory
+        set(track_obj(i).H.true_t1,'xdata', data(i).true(1, 1:data(i).i), 'ydata', data(i).true(2, 1:data(i).i));
+        set(track_obj(i).H.obs_t1,'xdata', data(i).path(1, 1:data(i).i), 'ydata', data(i).path(2, 1:data(i).i));
+        
+        if data(j).uncertain(data(i).i) > p_2_ed || data(j).error(data(i).i) > 10
+            PATTEN(i) = 0;  % swith to expensive algorithm
+        end
+        if data(j).uncertain(data(j).i) < p_2_cd
+            PATTEN(i) = 1;  % swith to cheap algorithm
+        end
     end
+    
+    
+    
     pause(0.05);
     
    
@@ -195,7 +211,7 @@ data = [];
 N_track_obj = length(track_obj);
 p = zeros(4, 4);
 for i  =1:N_track_obj
-    if PATTEN == 0
+    if PATTEN(i) == 0
        % ED 
        z = get_noisy_measurement_ed(track_obj(i).x, R_ed);
        x = [z(1); z(2); z(3); (2-0)*rand];     % velocity are randomly given  
@@ -253,9 +269,11 @@ fig = figure(1);
 axis([-W, W, -H, H]);
 hold on
 wp=wp';
-h.map = plot(wp(1,:),wp(2,:), 'g')
+h.map = plot(wp(1,:),wp(2,:), 'b.')
 hold on
-
+for t=1:(size(wp,2)-1),% label each town
+  text(wp(1,t),wp(2,t),sprintf(' %d',t));
+end; 
 xlabel('metres'), ylabel('metres')
 set(fig, 'name', 'Hybrid Simulator')
 set(fig,'units','points','position',[100,100,800,800])
