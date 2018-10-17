@@ -57,7 +57,7 @@ dt = DT_CONTROLS;
 iwp = 1 ;
 
 % Pattern of hybrid method
-PATTEN(1:N_track_obj) = 0; % 0: ED for inialization, 1: CD for inialization
+PATTEN(1:N_track_obj) = 1; % 0: ED for inialization, 1: CD for inialization
 
 % inialize the tracking object state
 [X, P, data] = mot_inialization(track_obj, R_ed, R_cd, R_b, R_v, PATTEN);
@@ -126,7 +126,7 @@ while iwp ~= 0
         set(track_obj(i).H.true_t1,'xdata', data(i).true(1, 1:data(i).i), 'ydata', data(i).true(2, 1:data(i).i));
         set(track_obj(i).H.obs_t1,'xdata', data(i).path(1, 1:data(i).i), 'ydata', data(i).path(2, 1:data(i).i));
         
-        if data(j).uncertain(data(i).i) > p_2_ed || data(j).error(data(i).i) > 10
+        if data(j).uncertain(data(i).i) > p_2_ed %|| data(j).error(data(i).i) > 10
             PATTEN(i) = 0;  % swith to expensive algorithm
         end
         if data(j).uncertain(data(j).i) < p_2_cd

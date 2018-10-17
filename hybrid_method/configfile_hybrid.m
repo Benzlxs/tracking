@@ -71,14 +71,14 @@ sigmaB = (1.0*pi/180); % radians
 R_ed = [sigmaX^2 0 0; 0 sigmaY^2 0; 0 0 sigmaB^2];
 sigmaX = 0.2; % meter
 sigmaY = 0.2; % meter
-R_cd =  8*[sigmaX^2 0; 0 sigmaY^2];
+R_cd =  40*[sigmaX^2 0; 0 sigmaY^2];
 
 R_b = (10.0*pi/180)^2; % bearing inializaiton uncertainty
 R_v = (2.0)^2;  % velocity inialization uncertainty, there is no observation about it at beginning, so it should be large
 
 
 % uncertainty for switch
-p_2_ed = 0.34;
+p_2_ed = 0.9; %0.34
 p_2_cd = 0.1;
 
 

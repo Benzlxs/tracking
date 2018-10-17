@@ -14,9 +14,8 @@ function [X P] = update_cd(X, P, z, R)
 H = [1, 0, 0, 0;
      0, 1, 0, 0];
 
-v = z-X(1:2);
-v(end) = pi_to_pi(v(end));
-
+v = z-X(1:2); 
+%v(end) = pi_to_pi(v(end));
 PHt= P*H';
 S= H*PHt + R;
 
