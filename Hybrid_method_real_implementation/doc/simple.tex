@@ -1,0 +1,66 @@
+\title{Evolution of Estimation Uncertainty under Time Varying Measurement Complexity}
+\author{
+        *****\\
+        UNSW
+}
+\date{1/11/2018}
+
+\documentclass[12pt]{article}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent 1. What is the problem\\
+2. Why is it still a probelm\\
+3. What is the solution and what theory is solution based on\\
+4. what is found\\
+\end{abstract}
+
+\section{Introduction}\label{introduction}
+\indent When perceiving surroundings, human beings do not repeatively identify the same objects. Instead, they spent a lot of energy on recognizing new objects at the very begining, then paied a little bit efforet to track them rather than re-recognize them. Therefore, the workload of the brain can be significantly decreased and more resources can be used for other purposes. For example, after identifying all participants in the traffic scenario, driver would just  effortlessly track them and split some extra attentions on possible new coming objects or predicting abnormal situations, instead of being in particularlly alert state to re-detect every details in the scenario. In most cases, our brain just tries to maintain safe drivering with minimum effort consumption so that fatigue will not happen too quickly.
+
+Such kind of intelligent deteciton and tracking mechanism 
+
+\section{Literature Review}\label{literature_review}
+\noindent Papers on cheap tracking.\\
+Papers on how to fuse the expensive computation and cheap computation together.\\
+Papers on uncertainty evolution with changing sensor model.
+
+\section{Evolution of Estimation Uncertainty}\label{estmation_uncertainty}
+When the sensor noise follows Gaussian distrbution, we can justify the idea from Riccati equation.
+\subsection{Riccati equation}\label{Riccati_equation}
+Introduce the Riccati euation and what is solution with sensor uncertainty R hypothesis.
+
+\subsection{Uncertainty Evolution with increasing R}
+Generation of R is based on series and sequence theory.\\
+The R will increasing with the time, for example, sensor gradually degrade with the time due to aging. What is solution of Riccatti equation?
+
+\subsection{Uncertainty Evolution with periodical R}
+The R periodically change with time, just like replace the sensor regularly, which is our case. What is the solution of Riccatti equation?
+
+
+\section{Hybrid method}\label{hybrid_method}
+
+\subsection{Expensive detection}
+Expensive detection method based on deep learning\cite{voxelnet}
+
+\subsection{Cheap detection}
+Cheap detection method based on simple segmentation
+
+\subsection{Hybrid method}
+Using the tracking mechanism to combine them together.
+
+\section{Implementation}\label{Implementation}
+
+
+\section{Experiments}\label{experiments}
+ 
+ 
+ 
+
+\bibliographystyle{abbrv}
+\bibliography{simple}
+
+\end{document}
+

@@ -1,0 +1,150 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools}  % loads »amsmath«
+
+\usepackage{epsfig}
+\usepackage{subfigure}
+\usepackage{calc}
+\usepackage{url}
+\usepackage{amssymb}
+\usepackage{amstext}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{multicol}
+\usepackage{bbm}
+\usepackage{pslatex}
+\usepackage{apalike}
+\usepackage{multirow}
+\usepackage{upquote}
+\usepackage{changepage}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{changepage}
+
+
+
+
+ 
+\begin{document}
+
+\title{Hydrid method}
+\author{Xuesong LI}
+\date{11/10/2018}
+\maketitle
+
+\section{Introduction}
+This document is for hydird method simulation platform. The core idea of hydrid method is to combine the accurate and expensive detection algorithm (ED), cheap and poor detection algorithm (CD) and cheap tracking algorithm together to optimize the computation resources. Adding more cheap algorihtms to maintain the same detection or tracking quality without redundant computations. In our simulation platform, ED is represented by observations with less uncertainty and more information, while CD is denoted by observation with more noises and limited information, which makes sense in reality.
+
+
+\section{Notation}
+\noindent Moving object continuous state: $ X_{mot} = \begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}$ (Random variables follow gaussian distribution)
+
+\noindent Moving object other: $ O_{mot} = \begin{bmatrix} P_{mot}^{c_{1}} \\ L_{mot} \\ W_{mot} \\ H_{mot} \end{bmatrix} $
+
+\noindent Filter measurments from ED: $Z_{ED} = \begin{bmatrix} x_{ED}^{z} \\ y_{ED}^{z} \\ \alpha_{ED}^{z} \end{bmatrix}$ for filter updating
+
+\noindent Other measurments from ED: $O_{ED} = \begin{bmatrix} P_{ED}^{c_{1}} \\ L_{ED} \\ W_{ED} \\ H_{ED} \end{bmatrix}$
+
+\noindent Filter measurments from CD: $Z_{CD} = \begin{bmatrix} x_{ED}^{z} \\ y_{ED}^{z} \end{bmatrix}$ for filter updating
+
+
+\section{Processing model}
+
+Motion model is   $X_{mot}(k+1) = F(X_{mot}(k)) + Q_{mot}$, where $Q_{mot}$ is process model noise
+
+$\begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}(k+1)$ = $\begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}(k)$ + $dt*\begin{bmatrix} v_{mot}(k)*cos(\alpha_{mot}(k)) \\ v_{mot}(k)*sin(\alpha_{mot}(k)) \\ 0 \\ 0 \end{bmatrix}(k)$ + $ Q_{mot}$
+\\
+$dt$ is discreate time in Euler approximation.
+
+
+\noindent Jacobian of states in process model is as following.
+
+\begin{adjustwidth}{ 0cm}{}
+\noindent $J=\begin{bmatrix}    
+						 1 & 0 & -v_{mot}(k)*dt*sin(\alpha_{mot}(k)) &  dt*cos(\alpha_{mot}(k)) \\
+						 0 & 1 &  v_{mot}(k)*dt*cos(\alpha_{mot}(k)) & dt*sin(\alpha_{mot}(k)) \\
+						 0 & 0 & 1 & 0 \\
+						 0 & 0 & 0 & 1 
+\end{bmatrix}$
+\end{adjustwidth}
+
+
+\noindent Prediction step:
+\\
+\\
+\^{X$_{mot}$(k+1)} = F(\^{X$_{mot}$(k)})
+\\
+\\
+\noindent $P_{mot}(k+1|k) = J*P_{mot}(K|K)*J^{T} + Q_{mot}$
+\\
+
+   
+\section{Observation Model}
+Two observation models: ED and CD, the observation noise $R_{ED}$ is much smaller than $R_{CD}$, to represent ED methods are better and expensive than cheap methods.
+\subsection{ED}
+$Z_{ED}(k) = h(X_{mot}(k)) + R_{ED}$
+\\
+$Z_{ED}(k) = \begin{bmatrix} x_{ED}^{z} \\ y_{ED}^{z} \\ \alpha_{ED}^{z} \end{bmatrix}(k) = \begin{bmatrix} x_{ED} \\ y_{ED} \\ \alpha_{ED} \end{bmatrix}(k)$ + $R_{ED}$ 
+\\
+Observation model is linear system. $Z_{ED}(k) = H*X_{mot}(k) + R_{ED}$
+\\
+$H == \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$
+
+
+
+
+\subsection{CD}
+$Z_{CD}(k) = H(X_{mot}(k)) + R_{CD}$
+\\
+$Z_{CD}(k) = \begin{bmatrix} x_{CD} \\ y_{CD} \end{bmatrix}(k) = \begin{bmatrix} x_{CD} \\ y_{CD} \end{bmatrix}(k|k-1)$ + $R_{CD}$ 
+\\
+Observation model is linear system. $Z_{CD}(k) = H*X_{mot}(k) + R_{CD}$
+\\
+$H == \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}$
+
+
+\noindent Updating step:
+
+\noindent$S=H*P(k+1|k)*H^{T} + R$\\
+$K=P(k+1|k)*H^{T}*S^{-1}$\\
+$X(k+1|k+1) = X(k+1|k) + K*v$\\
+$P(k+1|k+1) = P(k+1|k) - K*S*K^{T}$
+
+
+\subsection{Inializaiton}
+It is assumed that robot location is perfectly known, so the inialization of moving object is just based on uncertainty of sensor noise.
+
+\subsection{ED}
+\noindent Filter measurments from ED: $Z_{ED} = \begin{bmatrix} x_{ED}^{z} \\ y_{ED}^{z} \\ \alpha_{ED}^{z} \end{bmatrix}$  
+
+$ X_{mot}(0) = \begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}(0)$ = $\begin{bmatrix} x_{mot}^{z} \\ y_{mot}^{z} \\ \alpha_{mot}^{z} \\ rand-velocity \end{bmatrix}$ + $\begin{bmatrix} x_{r} \\ y_{r} \\ 0 \\ 0 \end{bmatrix}$   + $R_{ED}$
+
+\noindent where $\begin{bmatrix} x_{r} \\ y_{r} \end{bmatrix}$ = $\begin{bmatrix} 0 \\ -Hmap \end{bmatrix}$
+
+$ \begin{bmatrix} \hat{x}_{mot} \\ \hat{y}_{mot} \\ \hat{\alpha}_{mot} \\ \hat{v}_{mot} \end{bmatrix}(0)$ = $\begin{bmatrix} x_{mot}^{z} \\ y_{mot}^{z} \\ \alpha_{mot}^{z} \\ rand-velocity \end{bmatrix}$ + $\begin{bmatrix} x_{r} \\ y_{r} \\ 0 \\ 0 \end{bmatrix}$   + $noisevalue$
+
+$P(0) = \begin{bmatrix}
+R_{ED} & 0 \\
+0 & R_{velocity}
+\end{bmatrix}$ $(4\times 4 matrix)$
+
+\subsection{CD}
+\noindent Filter measurments from CD: $Z_{CD} = \begin{bmatrix} x_{ED}^{z} \\ y_{ED}^{z} \end{bmatrix}$  
+
+
+$ X_{mot}(0) = \begin{bmatrix} x_{mot} \\ y_{mot} \\ \alpha_{mot} \\ v_{mot} \end{bmatrix}(0)$ = $\begin{bmatrix} x_{mot}^{z} \\ y_{mot}^{z} \\ rand-angle \\ rand-velocity \end{bmatrix}$ + $\begin{bmatrix} x_{r} \\ y_{r} \\ 0 \\ 0 \end{bmatrix}$   + $R_{CD}$
+
+\noindent where $\begin{bmatrix} x_{r} \\ y_{r} \end{bmatrix}$ = $\begin{bmatrix} 0 \\ -Hmap \end{bmatrix}$
+
+$ \begin{bmatrix} \hat{x}_{mot} \\ \hat{y}_{mot} \\ \hat{\alpha}_{mot} \\ \hat{v}_{mot} \end{bmatrix}(0)$ = $\begin{bmatrix} x_{mot}^{z} \\ y_{mot}^{z} \\ rand-angle \\ rand-velocity \end{bmatrix}$ + $\begin{bmatrix} x_{r} \\ y_{r} \\ 0 \\ 0 \end{bmatrix}$   + $noisevalue$
+
+$P(0) = \begin{bmatrix}
+R_{CD} & 0 & 0 \\
+0  & R_{angle} & 0 \\
+0 & 0 & R_{velocity}
+\end{bmatrix}$ $(4\times 4 matrix)$
+
+
+\end{document}
