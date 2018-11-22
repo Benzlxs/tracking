@@ -1,4 +1,4 @@
-\title{Evolution of Estimation Uncertainty under Time Varying Measurement Complexity}
+\title{Efficient Moving Object Tracking with Hybrid Detection Approaches}
 \author{
         *****\\
         UNSW
@@ -23,11 +23,12 @@
 Such kind of intelligent deteciton and tracking mechanism 
 
 \section{Literature Review}\label{literature_review}
-\noindent Papers on cheap tracking.\\
+\noindent Papers on tracking.\\
+Papers on detection.\\
 Papers on how to fuse the expensive computation and cheap computation together.\\
 Papers on uncertainty evolution with changing sensor model.
 
-\section{Evolution of Estimation Uncertainty}\label{estmation_uncertainty}
+\section{Evolution of Estimation Uncertainty under Time Varying Measurement Complexity}\label{estmation_uncertainty}
 When the sensor noise follows Gaussian distrbution, we can justify the idea from Riccati equation.
 \subsection{Riccati equation}\label{Riccati_equation}
 Introduce the Riccati euation and what is solution with sensor uncertainty R hypothesis.
@@ -40,7 +41,7 @@ The R will increasing with the time, for example, sensor gradually degrade with 
 The R periodically change with time, just like replace the sensor regularly, which is our case. What is the solution of Riccatti equation?
 
 
-\section{Hybrid method}\label{hybrid_method}
+\section{Detection Approaches}\label{hybrid_method}
 
 \subsection{Expensive detection}
 Expensive detection method based on deep learning\cite{voxelnet}
@@ -48,14 +49,22 @@ Expensive detection method based on deep learning\cite{voxelnet}
 \subsection{Cheap detection}
 Cheap detection method based on simple segmentation
 
-\subsection{Hybrid method}
+\section{Moving Object Tracking}
+
 Using the tracking mechanism to combine them together.
 
-\section{Implementation}\label{Implementation}
+\subsection{Tracking Filter}
+Extended Kalman filter or PhD filter are used for moving object tracking. (Finish the tracking book to get all theoretical fundamentals for tracking)
+\subsection{Tracking with Hybird Detection Methods}
+
+
 
 
 \section{Experiments}\label{experiments}
- 
+\subsection{Implementation}\label{Implementation} 
+
+
+\subsection{Results}
  
  
 
