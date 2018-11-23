@@ -29,15 +29,24 @@ Papers on how to fuse the expensive computation and cheap computation together.\
 Papers on uncertainty evolution with changing sensor model.
 
 \section{Evolution of Estimation Uncertainty under Time Varying Measurement Complexity}\label{estmation_uncertainty}
-When the sensor noise follows Gaussian distrbution, we can justify the idea from Riccati equation.
-\subsection{Riccati equation}\label{Riccati_equation}
-Introduce the Riccati euation and what is solution with sensor uncertainty R hypothesis.
 
-\subsection{Uncertainty Evolution with increasing R}
+$p(X_{k}|Y_{k}) \propto p(y_{k}|X_{k}) \int p(X_{k}|X_{k-1})p(X_{k-1}|Y_{k-1}) dX_{k-1} $ \\
+
+Likelihood function, $p(y_{k}|X_{k})$, deontes the sensor model.
+How does estimation evolve when $p(y_{k}|X_{k})$ is time varying.
+
+\subsection{General distribtion}
+$p(y_{k}|X_{k})$ is any form distribution function and is approximated with summation of gaussion function. 
+
+When the sensor noise follows Gaussian distrbution, we can justify the idea from Riccati equation.
+\subsection{Gaussian Distribution}\label{Riccati_equation}
+$p(y_{k}|X_{k})$ follows Gaussian distribution. Introduce the Riccati euation and what is solution with sensor uncertainty R hypothesis.
+
+\subsubsection{Uncertainty Evolution with increasing R}
 Generation of R is based on series and sequence theory.\\
 The R will increasing with the time, for example, sensor gradually degrade with the time due to aging. What is solution of Riccatti equation?
 
-\subsection{Uncertainty Evolution with periodical R}
+\subsubsection{Uncertainty Evolution with periodical R}
 The R periodically change with time, just like replace the sensor regularly, which is our case. What is the solution of Riccatti equation?
 
 
