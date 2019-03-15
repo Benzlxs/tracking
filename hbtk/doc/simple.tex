@@ -1,0 +1,87 @@
+\title{Efficient Moving Object Tracking with Hybrid Detection Approaches}
+\author{
+        *****\\
+        UNSW
+}
+\date{1/11/2018}
+
+\documentclass[12pt]{article}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent 1. What is the problem\\
+2. Why is it still a probelm\\
+3. What is the solution and what theory is solution based on\\
+4. what is found\\
+
+Interacting with the environment, such as object tracking, is a crucial ability of mobile robots. In addition to high accuracy, economical energy consumption is also desirable. In order to satisfy both requirements, we propose a hybrid detection approach that makes use of both image segmentation and deep learning. This method is particularly suitable for tracking moving objects where expensive computations are needed in conventional procedures. In the input video stream, a reduced number of  key frames are selected for processing while ensuring that the tracking uncertainty is bounded. The selection made on the basis of tracking quality and abnormal instances also guarantees that significant events are detected. Experiments were conducted using benchmark dataset and results showed that the proposed method outperforms relevant methods in efficiency and comparable in accuracy.
+
+\end{abstract}
+
+\section{Introduction}\label{introduction}
+\indent When perceiving surroundings, human beings do not repeatively identify the same objects. Instead, they spent a lot of energy on recognizing new objects at the very begining, then paied a little bit efforet to track them rather than re-recognize them. Therefore, the workload of the brain can be significantly decreased and more resources can be used for other purposes. For example, after identifying all participants in the traffic scenario, driver would just  effortlessly track them and split some extra attentions on possible new coming objects or predicting abnormal situations, instead of being in particularlly alert state to re-detect every details in the scenario. In most cases, our brain just tries to maintain safe drivering with minimum effort consumption so that fatigue will not happen too quickly.
+
+Such kind of intelligent deteciton and tracking mechanism 
+
+\section{Literature Review}\label{literature_review}
+\noindent Papers on tracking.\\
+Papers on detection.\\
+Papers on how to fuse the expensive computation and cheap computation together.\\
+Papers on uncertainty evolution with changing sensor model.
+
+\section{Evolution of Estimation Uncertainty under Time Varying Measurement Complexity}\label{estmation_uncertainty}
+
+$p(X_{k}|Y_{k}) \propto p(y_{k}|X_{k}) \int p(X_{k}|X_{k-1})p(X_{k-1}|Y_{k-1}) dX_{k-1} $ \\
+
+Likelihood function, $p(y_{k}|X_{k})$, deontes the sensor model.
+How does estimation evolve when $p(y_{k}|X_{k})$ is time varying.
+
+\subsection{General distribtion}
+$p(y_{k}|X_{k})$ is any form distribution function and is approximated with summation of gaussion function. 
+
+When the sensor noise follows Gaussian distrbution, we can justify the idea from Riccati equation.
+\subsection{Gaussian Distribution}\label{Riccati_equation}
+$p(y_{k}|X_{k})$ follows Gaussian distribution. Introduce the Riccati euation and what is solution with sensor uncertainty R hypothesis.
+
+\subsubsection{Uncertainty Evolution with increasing R}
+Generation of R is based on series and sequence theory.\\
+The R will increasing with the time, for example, sensor gradually degrade with the time due to aging. What is solution of Riccatti equation?
+
+\subsubsection{Uncertainty Evolution with periodical R}
+The R periodically change with time, just like replace the sensor regularly, which is our case. What is the solution of Riccatti equation?
+
+
+\section{Detection Approaches}\label{hybrid_method}
+
+\subsection{Expensive detection}
+Expensive detection method based on deep learning\cite{voxelnet}
+
+\subsection{Cheap detection}
+Cheap detection method based on simple segmentation
+
+\section{Moving Object Tracking}
+
+Using the tracking mechanism to combine them together.
+
+\subsection{Tracking Filter}
+Extended Kalman filter or PhD filter are used for moving object tracking. (Finish the tracking book to get all theoretical fundamentals for tracking)
+\subsection{Tracking with Hybird Detection Methods}
+
+
+
+
+\section{Experiments}\label{experiments}
+\subsection{Implementation}\label{Implementation} 
+
+
+\subsection{Results}
+ 
+ 
+
+\bibliographystyle{abbrv}
+\bibliography{simple}
+
+\end{document}
+

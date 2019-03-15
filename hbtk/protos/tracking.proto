@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+
+message Detector{
+        string expensive_one=1;
+        string cheap_one=2;
+        uint32 interval_num=3;
+        }
+
+message Filter{
+        string filter_name=1;
+        string data_association=2; 
+        }
+
+message Tracker{
+        string tracker_name=1;
+        
+        }

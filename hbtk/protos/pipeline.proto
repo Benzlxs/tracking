@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package hbtk.protos;
+
+import "hbtk/protos/tracking.proto";
+
+message TrackingPipeline{
+        Detector detector = 1;
+        Filter filter = 2;
+        Tracker tracker = 3;
+        }
