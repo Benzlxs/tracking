@@ -8,4 +8,5 @@ message TrackingPipeline{
         Detector detector = 1;
         Filter filter = 2;
         Tracker tracker = 3;
+        Dataset dataset = 4;
         }
