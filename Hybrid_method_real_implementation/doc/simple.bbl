@@ -1,9 +1,0 @@
-\begin{thebibliography}{1}
-
-\bibitem{voxelnet}
-Y.~Zhou and O.~Tuzel.
-\newblock Voxelnet: End-to-end learning for point cloud based 3d object
-  detection.
-\newblock {\em CoRR}, abs/1711.06396, 2017.
-
-\end{thebibliography}
