@@ -1,4 +1,9 @@
 *.m~
 *.log
 *.synctex.gz
+*.swp
+*_pb2.py
+*.pyc
+datas
+hbtk/results
 
