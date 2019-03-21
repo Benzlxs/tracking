@@ -1,9 +1,10 @@
 
-config='./config/tracking_1.config'
+config='./config/tracking_2.config'
 code='./tracking.py'
-output_dir='./results'
+output_dir='./results/tracking_2'
 mode=tracking
-display=True
+#display=True 
+display=False
 exe=~/miniconda3/bin/python3
 #exe=~/miniconda3/bin/pudb3
 

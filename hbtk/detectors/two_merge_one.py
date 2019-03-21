@@ -19,6 +19,7 @@ class HybridDetector(object):
         self.auxiliary_method = detector_config.auxiliary_method
         self.interval_num = detector_config.interval_num
         self.data_subset = detector_config.data_subset
+        self.confidence = detector_config.confidence
         self.num_frames = {}  # saved as dictionary variables
         self.fused_detections = {} # saved fused detection results.
         # self checking, make sure the detection numbers are the same for both methods
@@ -34,12 +35,18 @@ class HybridDetector(object):
             self.fused_detections[name] = np.empty((0,7), dtype=result_main_detections.dtype)  # n*6 to save all the data
             for i in range(1,int(num_main_detection+1)):
                 # the first frame of self.interval_num will be from the main detections
-                if i % self.interval_num!=1:
-                    self.fused_detections[name] = np.append(self.fused_detections[name], \
-                                        result_main_detections[result_main_detections[:,0]==i,0:7], axis=0)
+                if i % self.interval_num == 1:
+                    temp_det = result_main_detections[result_main_detections[:,0]==i,0:7]
+                    temp_det = temp_det[temp_det[:,6]>self.confidence,0:7]
+                    # self.fused_detections[name] = np.append(self.fused_detections[name], \
+                    #                    result_main_detections[result_main_detections[:,0]==i,0:7], axis=0)
+                    self.fused_detections[name] = np.append(self.fused_detections[name], temp_det, axis=0)
                 else:
-                    self.fused_detections[name]= np.append(self.fused_detections[name], \
-                                                result_auxiliary_detections[result_auxiliary_detections[:,0]==i,0:7], axis=0)
+                    temp_det = result_auxiliary_detections[result_auxiliary_detections[:,0]==i,0:7]
+                    temp_det = temp_det[temp_det[:,6]>self.confidence,0:7]
+                    # self.fused_detections[name]= np.append(self.fused_detections[name], \
+                    #                            result_auxiliary_detections[result_auxiliary_detections[:,0]==i,0:7], axis=0)
+                    self.fused_detections[name] = np.append(self.fused_detections[name], temp_det, axis=0)
                 
  
     def get_num_frames(self, name_subset):

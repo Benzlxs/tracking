@@ -4,8 +4,10 @@ import os
 import sys
 import shutil
 import pickle
+import pathlib
 import fire
 import time
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -44,10 +46,12 @@ def tracking(config_path,
 
     """
     config = pipeline_pb2.TrackingPipeline()
+    output_folder_dir = pathlib.Path(output_dir)
+    output_folder_dir.mkdir(parents=True, exist_ok=True)
     with open(config_path, "r") as f:
         protos_str = f.read()
         text_format.Merge(protos_str, config)
-
+    shutil.copyfile(config_path, str(output_dir+"/"+"pipeline.config"))
     detector_config = config.detector
     filter_config = config.filter
     tracker_config = config.tracker
@@ -68,15 +72,25 @@ def tracking(config_path,
 
     # run method
     for subset in hbtk_detectors.data_subset:
-        print("Processing %s"%(subset))
+        print("Performing tracking in dataset %s"%(subset))
         # creating the tracker
-        mot_tracker = Sort( max_age = tracker_config.max_age,  \
-                    min_hits = tracker_config.min_hits, age_tolerate=tracker_config.age_tolerate, data_association = filter_config.data_association )
+        mot_tracker = Sort( config = tracker_config, data_association = filter_config.data_association )
 
-        
+        # file to save the detection results
+        det_folder_dir = output_dir+ '/detection/' + 'interval_%d'%(detector_config.interval_num)
+        if not os.path.exists(det_folder_dir):
+            os.makedirs(det_folder_dir)
+        det_file = open(det_folder_dir + '/%s.txt'%(subset), 'w' )
+
         with open(output_dir+'/%s.txt'%(subset),'w') as out_file:
             for frame in range(1,(hbtk_detectors.get_num_frames(subset)+1)):
                 object_dets = hbtk_detectors.fetch_detection(subset, frame)[:,2:7]
+
+                # saving the new detection combination
+                for d in object_dets:
+                    det_file.write('%d,-1,%.2f,%.2f,%.2f,%.2f,%.2f,-1,-1,-1\n'%(frame, d[0], d[1], \
+                                                                                d[2],d[3],d[4] ))
+
                 object_dets[:,2:4] +=object_dets[:,0:2]  # convert to [x1, y1, w, h] to [x1, y1, x2, y2]
 
                 if display:
@@ -87,8 +101,13 @@ def tracking(config_path,
                     plt.title(subset+' Tracked Targets')
 
                 start_time = time.time()
+                
+                if frame % detector_config.interval_num==1:
+                    reset_confid = True
+                else:
+                    reset_confid = True
 
-                trackers_results = mot_tracker.update(object_dets)
+                trackers_results = mot_tracker.update(object_dets, reset_confid=reset_confid)
 
                 # middle parameters to indicate the running program
                 cycle_time = time.time() - start_time
@@ -97,7 +116,8 @@ def tracking(config_path,
 
                 # saving the results
                 for d in trackers_results:
-                    print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1'%(frame,d[4],d[0],d[1],d[2]-d[0],d[3]-d[1]),file=out_file)
+                    # saving the detection results with confidence
+                    print('%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,-1,-1,-1'%(frame,d[4],d[0],d[1],d[2]-d[0],d[3]-d[1],d[5]),file=out_file)
                     if display:
                         d = d.astype(np.int32)
                         ax1.add_patch(patches.Rectangle((d[0],d[1]),d[2]-d[0],d[3]-d[1],fill=False,lw=3,ec=colours[d[4]%32,:]))
@@ -109,6 +129,7 @@ def tracking(config_path,
                     ax1.cla()
 
         print("Total Tracking took: %.3f for %d frames or %.1f FPS"%(total_time,total_frames,total_frames/total_time))
+        det_file.close()
 
 
 if __name__=='__main__':

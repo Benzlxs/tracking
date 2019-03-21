@@ -7,6 +7,7 @@ message Detector{
         string auxiliary_method = 2;
         repeated string data_subset = 3;
         uint32 interval_num=4;
+        float confidence=5;
         }
 
 message Filter{
@@ -19,6 +20,8 @@ message Tracker{
         uint32 max_age=2;        
         uint32 min_hits=3;
         uint32 age_tolerate=4;
+        uint32 start_hits=5;
+        float ratio_hit_age=6;
         }
 
 message Dataset{

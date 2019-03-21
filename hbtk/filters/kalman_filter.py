@@ -59,8 +59,9 @@ class KalmanBoxTracker(object):
     self.hits = 0
     self.hit_streak = 0
     self.age = 0
+    self.confid = bbox[4] ## saving the detection confidence
 
-  def update(self,bbox):
+  def update(self,bbox, reset_confid=True):
     """
     Updates the state vector with observed bbox.
     """
@@ -69,6 +70,8 @@ class KalmanBoxTracker(object):
     self.hits += 1
     self.hit_streak += 1
     self.kf.update(convert_bbox_to_z(bbox))
+    if reset_confid:
+        self.confid = bbox[4]
 
   def predict(self):
     """
