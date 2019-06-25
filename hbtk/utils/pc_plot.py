@@ -10,6 +10,54 @@ def scale_to_255(a, min, max, dtype=np.uint8):
 
 
 # ==============================================================================
+#               Convert xyz into coordinates in image
+# ==============================================================================
+def convert_xyz_to_img(det,
+                       res=0.1,
+                       side_range=(-60., 60.),  # left-most to right-most
+                       fwd_range = (-10., 70.), # back-most to forward-most
+                       height_range=(-1.8, 1.),  # bottom-most to upper-most
+                       ):
+    """
+    args:
+        det: [class, x, y, z, l, w, h]
+    return:
+        [right_up, left_bottom] ([x0,y0, x1, y1])
+    """
+    # checking bounding points
+    x_lidar = det[0]
+    y_lidar = det[1]
+    l_lidar = det[3]
+    w_lidar = det[4]
+
+    side_range = np.array(side_range)
+    fwd_range = np.array(fwd_range)
+    height_range = np.array(height_range)
+    if x_lidar > fwd_range[1]:
+        x_lidar = fwd_range[1]
+    if x_lidar < fwd_range[0]:
+        x_lidar = fwd_range[0]
+
+    if y_lidar > side_range[1]:
+        y_lidar = side_range[1]
+    if y_lidar < side_range[0]:
+        y_lidar = side_range[0]
+
+    # CONVERT TO PIXEL POSITION VALUES - Based on resolution
+    x_img = (-y_lidar / res).astype(np.int32)  # x axis is -y in LIDAR
+    y_img = (-x_lidar / res).astype(np.int32)  # y axis is -x in LIDAR
+    l_img_half = ( l_lidar / res / 2).astype(np.int32)
+    w_img_half = ( w_lidar / res / 2).astype(np.int32)
+
+    # SHIFT PIXELS TO HAVE MINIMUM BE (0,0)
+    # floor & ceil used to prevent anything being rounded to below 0 after shift
+    x_img -= int(np.floor(side_range[0] / res))
+    y_img += int(np.ceil(fwd_range[1] / res))
+
+    return [x_img - w_img_half, y_img - l_img_half, x_img + w_img_half, y_img + l_img_half]
+
+
+# ==============================================================================
 #                                                         POINT_CLOUD_2_BIRDSEYE
 # ==============================================================================
 def point_cloud_2_birdseye(points,
@@ -86,9 +134,5 @@ def point_cloud_2_birdseye(points,
 
     # FILL PIXEL VALUES IN IMAGE ARRAY
     im[y_img, x_img] = pixel_values
-
-
-
-
 
     return im
