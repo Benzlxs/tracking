@@ -62,7 +62,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
 
 
-def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 1.1):
+def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 0.9):
   """
   Assigns detections to tracked object (both represented as bounding boxes)
   Args:

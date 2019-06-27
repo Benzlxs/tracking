@@ -54,12 +54,12 @@ class ExtendKalmanBoxTracker_3D(object):
     """
     #define constant velocity model
     self.X = np.array([det[1], det[2], det[7], 0])
-    npm = 6 # uncertainity of initial position
-    self.P =  np.array([[npm,0,0,0], [0,npm,0,0], [0,0,npm,0], [0,0,0,npm] ])
-    npm = 4 # noise for process model
+    npm = 1 # uncertainity of initial position
+    self.P =  np.array([[npm,0,0,0], [0,npm,0,0], [0,0,npm,0], [0,0,0,100*npm] ])
+    npm = 0.05 # noise for process model
     self.Q = np.array([[npm,0,0,0], [0,npm,0,0], [0,0,npm,0], [0,0,0,npm] ])
 
-    nom = 2 # uncertainy for observation model
+    nom = 0.05 # uncertainy for observation model
     self.R = np.array([[ nom, 0, 0], [ 0, nom, 0], [ 0, 0, nom]])
 
     # observation matrix, H matrix
@@ -151,7 +151,7 @@ class ExtendKalmanBoxTracker_3D(object):
                   [ 0, 0,                          1,            0              ],
                   [ 0, 0,                          0,            1             ]])
 
-    self.P = J*self.P*J.T + self.Q
+    self.P = dot(dot(J,self.P),J.T) + self.Q
     self.age += 1
     if(self.time_since_update>0):
       self.hit_streak = 0
