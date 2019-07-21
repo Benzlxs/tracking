@@ -37,6 +37,28 @@ class Kitti_dataset(object):
             self.pose.append(origin_pose_inv.dot(next_pose).astype(np.float32))
             self.yaw.append(yaw - yaw_0)
 
+
+        # read calibration data
+        self.calib_data_path = dataset_dir/ 'calibration'
+        _velo_to_camera_txt = self.calib_data_path/'calib_velo_to_cam.txt'
+        self.calib_data_velo_2_cam = {}
+        with open(str(_velo_to_camera_txt),'r') as f:
+            for line in f.readlines():
+                 key, value = line.split(':', 1)
+                 try:
+                    self.calib_data_velo_2_cam[key] = np.array([float(x) for x in value.split()])
+                 except ValueError:
+                    pass
+        _cam_to_cam_txt = self.calib_data_path/'calib_cam_to_cam.txt'
+        self.calib_data_cam_2_cam = {}
+        with open(str(_cam_to_cam_txt),'r') as f:
+            for line in f.readlines():
+                 key, value = line.split(':', 1)
+                 try:
+                    self.calib_data_cam_2_cam[key] = np.array([float(x) for x in value.split()])
+                 except ValueError:
+                    pass
+
     def __len__(self):
         return len(self.pc_list)
 

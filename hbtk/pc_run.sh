@@ -6,6 +6,7 @@ mode=pointcloud_tracking
 display=True
 #display=False
 display_trajectory=True
+
 exe=~/miniconda3/bin/python3
 #exe=~/miniconda3/bin/pudb3
 

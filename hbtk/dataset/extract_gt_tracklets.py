@@ -112,7 +112,7 @@ def load_tracklets_for_frames(n_frames, xml_path):
 # save all ground truth detection
 def save_dets(dataset_root='/home/ben/Dataset/KITTI',
               date='2011_09_26',
-              drive='0084'):
+              drive='0093'):
     # read all detections
     dataset = load_dataset(dataset_root, date, drive)
     tracklet_rects, tracklet_types, frame_xyz, frame_lwh, frame_theta = load_tracklets_for_frames(len(list(dataset.velo)),

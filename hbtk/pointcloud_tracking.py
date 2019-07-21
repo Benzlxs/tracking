@@ -28,6 +28,7 @@ from hbtk.detectors.two_merge_one import HybridDetector
 from hbtk.trackers.sort_3d import Sort_3d
 from hbtk.utils.pc_plot import point_cloud_2_birdseye, convert_xyz_to_img
 from hbtk.dataset.kitti_dataset import Kitti_dataset
+from hbtk.utils import box_np_ops
 
 colours = {'Car': [1,1,1],
            'Pedestrian':[1,1,0],
@@ -45,12 +46,11 @@ def fig_initialization():
     cmap.set_bad(color='black')
     plt.ion()
     #fig = plt.figure(figsize=(10, 8))
-    fig = plt.figure(num=1)
+    fig = plt.figure(num=1, figsize=(12,11))
     spec2 = gridspec.GridSpec(ncols=1, nrows=2, height_ratios=[1, 2.5]) #[1, 2.2]
     ax1 = fig.add_subplot(spec2[0,0])
     ax2 = fig.add_subplot(spec2[1,0])
     return fig, ax1, ax2, cmap
-
 
 def pointcloud_visulization(config_path=None,
              output_dir='./results',
@@ -139,7 +139,6 @@ def pointcloud_visulization(config_path=None,
             # ax1.cla()
             time.sleep(0.1)
 
-
 def pointcloud_tracking(config_path=None,
                         output_dir='./results',
                         display = False,
@@ -179,12 +178,15 @@ def pointcloud_tracking(config_path=None,
 
     # figure initialization
     if display: fig,ax1,ax2, cmap = fig_initialization()
-    if display_trajectory: plt.ion();fig2=plt.figure(num=2);ax2_1=fig2.add_subplot(1,1,1);
+    if display_trajectory: plt.ion();fig2=plt.figure(num=2, figsize=(12,11));ax2_1=fig2.add_subplot(1,1,1);
 
     # initialization
     Dataset = Kitti_dataset(dataset_config)
     mot_tracker = Sort_3d(config=tracker_config, data_association=filter_config.data_association)
 
+    # read calibration data
+    calib_data_velo_2_cam = Dataset.calib_data_velo_2_cam
+    calib_data_cam_2_cam = Dataset.calib_data_cam_2_cam
     robot_poses = []
     global_maps = None
     for i in range(30, Dataset.__len__()):
@@ -244,7 +246,7 @@ def pointcloud_tracking(config_path=None,
             ax2_1.plot(plot_poses[:,0], plot_poses[:,1], '-.', color='red')
             # ax2_1.plot(plot_poses[-1,0], plot_poses[-1,1], 'bs', color='red', markersize=15)
             t2 = matplotlib.transforms.Affine2D().rotate_around(cur_robot_pose[0], cur_robot_pose[1], np.float(cur_robot_pose[2])) + ax2_1.transData
-            _box = patches.Rectangle((cur_robot_pose[0]-2, cur_robot_pose[1]-1), 4 , 2, lw=lw['Car'], ec=[1,0,0], transform=t2, zorder=0)
+            _box = patches.Rectangle((cur_robot_pose[0]-2, cur_robot_pose[1]-1), 4 , 2, lw=lw['Car'], ec=[1,0,0], fc=[1,0,0], transform=t2, zorder=0)
             ax2_1.add_patch(_box)
 
             # plot all trackters
@@ -262,7 +264,7 @@ def pointcloud_tracking(config_path=None,
                 ax2_1.plot(trace[:,0], trace[:,1], '-.', color=_cc, markersize=4)
                 # ax2_1.plot(trace[-1,0], trace[-1,1], 'bs', color=_cc, markersize=15)
                 t2 = matplotlib.transforms.Affine2D().rotate_around(x, y, np.float(theta)) + ax2_1.transData
-                _box = patches.Rectangle((x-l/2, y-h/2), l , h, lw=lw['Car'], ec=_cc, transform=t2, zorder=t_idx)
+                _box = patches.Rectangle((x-l/2, y-h/2), l , h, lw=lw['Car'], ec=_cc, fc=_cc, transform=t2, zorder=t_idx)
                 ax2_1.add_patch(_box)
                 # velocity and type class
                 trk_type = class_type[np.int(mot_tracker.trackers[t_idx].category)]
@@ -282,12 +284,58 @@ def pointcloud_tracking(config_path=None,
             side_range=(-60., 60.)
             fwd_range = (5.,  65.)
             height_range=(-1.8, 1.)
+            # read the bounding boxes
+            det_path = str(Dataset.det_list[i])
+            with open(det_path, 'r') as f:
+                lines = f.readlines()
+            content = [line.strip().split(',') for line in lines]
 
             img_path = str( Dataset.img_list[i])
             im =io.imread(img_path)
             # display image
             ax1.cla()
             ax1.imshow(im)
+            for det in content:
+                if det[0] in ['Car', 'Pedestrian', 'Cyclist']:
+                    _r_ = calib_data_velo_2_cam['R'].reshape(3,3)
+                    _t_ = calib_data_velo_2_cam['T'].reshape(3,1)
+                    Trev2c = np.vstack((np.hstack([_r_, _t_]), [0, 0, 0, 1]))
+                    # Trev2c = np.hstack([_r_, _t_])
+                    Rect = calib_data_cam_2_cam['R_rect_02'].reshape(3,3)
+                    Rect = np.vstack((np.hstack((Rect, [[0],[0],[0]])), [0, 0, 0, 1]))
+                    P2 = calib_data_cam_2_cam['P_rect_02'].reshape(3,4)
+                    P2 = np.vstack((P2, [0, 0, 0, 1]))
+                    # def
+                    # Trev2c=np.array([[ 7.533745e-03, -9.999714e-01, -6.166020e-04, -4.069766e-03],[ 1.480249e-02,  7.280733e-04, -9.998902e-01, -7.631618e-02],[ 9.998621e-01,  7.523790e-03,  1.480755e-02, -2.717806e-01],[ 0.000000e+00,  0.000000e+00,  0.000000e+00,  1.000000e+00]])
+                    # Rect=np.array([[ 0.9999239 ,  0.00983776, -0.00744505,  0.        ],[-0.0098698 ,  0.9999421 , -0.00427846,  0.        ],[ 0.00740253,  0.00435161,  0.9999631 ,  0.        ],[ 0.        ,  0.        ,  0.        ,  1.        ]])
+                    # P2=np.array([[7.215377e+02, 0.000000e+00, 6.095593e+02, 4.485728e+01],[0.000000e+00, 7.215377e+02, 1.728540e+02, 2.163791e-01],[0.000000e+00, 0.000000e+00, 1.000000e+00, 2.745884e-03],[0.000000e+00, 0.000000e+00, 0.000000e+00, 1.000000e+00]])
+                    # from lidar to camer
+                    det_order = [det[1], det[2], det[3], det[4], det[5], det[6], det[7]]
+                    box_camera = box_np_ops.box_lidar_to_camera(np.array(det_order, dtype=np.float).reshape(1,7), Rect, Trev2c)
+                    locs = box_camera[:, :3]
+                    dims = box_camera[:, 3:6]
+                    angles =box_camera[:, 6]
+                    camera_box_origin = [0.5, 1.0, 0.5]
+                    box_corners = box_np_ops.center_to_corner_box3d(
+                        locs, dims, angles, camera_box_origin, axis=1)
+                    box_corners_in_image = box_np_ops.project_to_image(
+                        box_corners, P2)
+                    # project into image
+                    # convert 3D bounding boxes into 2D image plane
+                    # bb = convert_xyz_to_img( np.array(det[1:], dtype=np.float), res=res, side_range=side_range, fwd_range=fwd_range)
+                    minxy = np.min(box_corners_in_image, axis=1)[0]
+                    minxy[0] = 0 if minxy[0]<0 else minxy[0]
+                    minxy[1] = 0 if minxy[1]<0 else minxy[1]
+                    maxxy = np.max(box_corners_in_image, axis=1)[0]
+                    maxxy[0] = im.shape[1] if maxxy[0]> im.shape[1] else maxxy[0]
+                    maxxy[1] = im.shape[0] if maxxy[1]> im.shape[0] else maxxy[1]
+
+                    bb = [ minxy[0], minxy[1], maxxy[0] - minxy[0],   maxxy[1] - minxy[1]]
+                    #t2 = matplotlib.transforms.Affine2D().rotate_around((bb[2]+bb[0])/2, (bb[3]+bb[1])/2, -np.float(det[7])) + ax2.transData
+                    # _box = patches.Rectangle((bb[0], bb[1]), bb[2]-bb[0], bb[3]-bb[1], angle= -np.float(det[7]), fill=False, lw=lw[det[0]], ec=colours[det[0]])
+                    _box = patches.Rectangle((bb[0], bb[1]), bb[2], bb[3], fill=False, lw=lw[det[0]], ec=colours[det[0]])
+                    ax1.add_patch(_box)
+
             ax1.set_title('image')
             ax1.set_xticks([])
             ax1.set_yticks([])
@@ -296,12 +344,6 @@ def pointcloud_tracking(config_path=None,
             pc_path = str(Dataset.pc_list[i])
             points_v = np.fromfile(pc_path, dtype=np.float32, count=-1).reshape([-1, 4])
             pc_img = point_cloud_2_birdseye(points_v, res=res, side_range=side_range, fwd_range=fwd_range)
-            # read the bounding boxes
-            det_path = str(Dataset.det_list[i])
-            with open(det_path, 'r') as f:
-                lines = f.readlines()
-            content = [line.strip().split(',') for line in lines]
-
             ax2.cla()
             ax2.imshow(pc_img,cmap=cmap, vmin = 1, vmax=255)
 
@@ -318,6 +360,22 @@ def pointcloud_tracking(config_path=None,
             fig.canvas.draw()
             #time.sleep(0.1)
             fig.canvas.flush_events()
+
+    # leave the plotting there
+    wait = input("PRESS ENTER TO CLOSE.")
+
+def pointcloud_tracking_hbtk(config_path=None,
+                        output_dir='./results',
+                        display = False,
+                        display_trajectory = False,
+                        downsample_num = 400,):
+    """
+    Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
+    detection method, and segment+pointNet classification is used as high-level detection method,
+    Pipeline: current frame ----> segmentation ---> data association ----> unmathced proposals
+           ----> classification model ----> next frame
+    """
+
 
 if __name__=='__main__':
     fire.Fire()

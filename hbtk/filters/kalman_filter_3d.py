@@ -156,6 +156,9 @@ class ExtendKalmanBoxTracker_3D(object):
     if(self.time_since_update>0):
       self.hit_streak = 0
     self.time_since_update += 1
+
+    self.history.append([self.X[0], self.X[1], self.X[2]])
+
     return self.X #self.history[-1]
 
   def get_state(self):
