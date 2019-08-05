@@ -18,8 +18,8 @@ from skimage import io
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(ROOT_DIR)
-sys.path.append(os.path.join( os.path.dirname(ROOT_DIR), 'hbtk'))
-sys.path.append(os.path.join( os.path.dirname(ROOT_DIR), 'hbtk', 'protos'))
+#sys.path.append(os.path.join( os.path.dirname(ROOT_DIR), 'hbtk'))
+#sys.path.append(os.path.join( os.path.dirname(ROOT_DIR), 'hbtk', 'protos'))
 
 
 from google.protobuf import text_format
@@ -47,7 +47,7 @@ def fig_initialization():
     plt.ion()
     #fig = plt.figure(figsize=(10, 8))
     fig = plt.figure(num=1, figsize=(12,11))
-    spec2 = gridspec.GridSpec(ncols=1, nrows=2, height_ratios=[1, 2.5]) #[1, 2.2]
+    spec2 = gridspec.GridSpec(ncols=1, nrows=2, height_ratios=[1, 2]) #[1, 2.2]
     ax1 = fig.add_subplot(spec2[0,0])
     ax2 = fig.add_subplot(spec2[1,0])
     return fig, ax1, ax2, cmap
@@ -189,7 +189,7 @@ def pointcloud_tracking(config_path=None,
     calib_data_cam_2_cam = Dataset.calib_data_cam_2_cam
     robot_poses = []
     global_maps = None
-    for i in range(30, Dataset.__len__()):
+    for i in range(0, Dataset.__len__()):
         # robot positions
         dets = Dataset.get_detection(i)
         local_points = np.zeros((4, len(dets)+1), dtype=np.float32)
@@ -275,7 +275,10 @@ def pointcloud_tracking(config_path=None,
 
             ax2_1.set_xlim([-20 ,200])
             ax2_1.set_ylim([-200,50])
+
             fig2.canvas.draw()
+            name_img = 'global_img/%06d.png'% i
+            plt.savefig((output_folder_dir/name_img))
             # time.sleep(0.1)
             fig2.canvas.flush_events()
 
@@ -358,6 +361,8 @@ def pointcloud_tracking(config_path=None,
             ax2.set_xticks([])
             ax2.set_yticks([])
             fig.canvas.draw()
+            name_img = 'bv_img/%06d.png'% i
+            plt.savefig((output_folder_dir/name_img))
             #time.sleep(0.1)
             fig.canvas.flush_events()
 

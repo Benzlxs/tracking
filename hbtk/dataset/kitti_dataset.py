@@ -65,7 +65,7 @@ class Kitti_dataset(object):
     def get_detection(self, frame_id):
         """
         fetch detection data
-        format: class, x, y, z, w, l, h
+        format: class, x, y, z, l, w, h
         """
         assert frame_id<len(self.det_list),"number of detection is larger than that of point blocks"
         dets = []

@@ -1,7 +1,8 @@
 
 config='./config/kitti_tracking.config'
 code='./pointcloud_tracking.py'
-output_dir='./results/tracking_2'
+#output_dir='./results/tracking_2'
+output_dir='./results'
 mode=pointcloud_tracking
 display=True
 #display=False
