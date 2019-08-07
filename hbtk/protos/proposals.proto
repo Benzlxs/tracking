@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+// define the template or formate for tracking pipeline
+
+message PointsFilter{
+	string filtering_method = 1;
+	float offset_dist = 2;
+	float max_filtering_dist = 3;
+	float semantic_road_conf = 4;
+	repeated float region_ranges = 5;
+	repeated float close_ranges = 6;
+	float h_sub = 7;
+	float w_sub = 8;
+}
+
+message PointsCluster{
+	string clustering_method = 1;
+	float dist_threshold = 2;
+        float H_dist = 3;
+        float V_dist = 4;
+        int32 min_connect_points = 5;
+        float angle_dif_threshold = 6;
+        int32 min_points_per_scan = 7;
+        int32 min_seg_point = 8;
+}
+
+message ClustersFilter{
+	string clusterfiltering_method = 1;
+	int32 min_points_cluster = 2;
+	float max_length_cluster = 3;
+	float max_width_cluster = 4;
+	float max_hight_cluster = 5;
+        float angle_threshold  = 6;
+        float frustum_offset = 7;
+        float frustum_ratio = 8;
+        int32 frustum_max_x = 9;
+}
+
+message ClustersOrientation{
+        string orientation_method = 1;
+        int32 angle_resolution =2;
+        }
+

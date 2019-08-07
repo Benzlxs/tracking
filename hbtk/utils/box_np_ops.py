@@ -788,12 +788,12 @@ def iou_nd_jit(boxes, query_boxes, add1=True):
     return overlaps
 
 
-#def points_in_rbbox(points, rbbox, z_axis=2, origin=(0.5, 0.5, 0.5)):
-#    rbbox_corners = center_to_corner_box3d(
-#        rbbox[:, :3], rbbox[:, 3:6], rbbox[:, 6], origin=origin, axis=z_axis)
-#    surfaces = corner_to_surfaces_3d(rbbox_corners)
-#    indices = points_in_convex_polygon_3d_jit(points[:, :3], surfaces)
-#    return indices
+def points_in_rbbox(points, rbbox, z_axis=2, origin=(0.5, 0.5, 0.5)):
+    rbbox_corners = center_to_corner_box3d(
+        rbbox[:, :3], rbbox[:, 3:6], rbbox[:, 6], origin=origin, axis=z_axis)
+    surfaces = corner_to_surfaces_3d(rbbox_corners)
+    indices = points_in_convex_polygon_3d_jit(points[:, :3], surfaces)
+    return indices
 
 
 def corner_to_surfaces_3d(corners):

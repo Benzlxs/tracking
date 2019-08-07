@@ -1,0 +1,13 @@
+syntax="proto3";
+
+package hbtk.protos;
+
+import "hbtk/protos/detection.proto";
+import "hbtk/protos/proposals.proto";
+
+message DetectionPipeline{
+	PointsFilter pointsfilter = 1;
+	PointsCluster pointscluster = 2;
+	ClustersFilter clustersfilter =3;
+        ClusterToDetection clustertodetection = 4;
+}

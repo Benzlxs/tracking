@@ -17,6 +17,7 @@ class Kitti_dataset(object):
         # get dataset list
         self.img_list = list(sorted(dataset_dir.glob('image_02/data/*.png')))
         self.pc_list  = list(sorted(dataset_dir.glob('velodyne_points/data/*.bin')))
+        self.reduce_pc_list  = list(sorted(dataset_dir.glob('reduced_points/data/*.bin')))
         self.det_list = list(sorted(dataset_dir.glob('detection/gt/*.txt')))
         self.oxts_list = list(sorted(dataset_dir.glob('oxts/data/*.txt')))
         assert len(self.img_list) == len(self.pc_list), "the image and point cloud numenbr should be the same"
@@ -73,8 +74,8 @@ class Kitti_dataset(object):
             lines = f.readlines()
         _dets_ = [line.strip().split(',') for line in lines]
         for _det in _dets_:
-            if _det[0] in ['Car', 'Pedestrian', 'Cyclist'] :
-                if _det[0] in ['Car'] :
+            if _det[0] in ['Car', 'Van', 'Pedestrian', 'Cyclist'] :
+                if _det[0] in ['Car', 'Van'] :
                     _det[0] = 0
                 if _det[0] in ['Pedestrian'] :
                     _det[0] = 1

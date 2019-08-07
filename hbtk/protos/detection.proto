@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// define the template or formate for tracking pipeline
+message ClusterToDetection{
+        string detection_method = 1;
+        int32 angle_resolution =2;
+	string model_path = 3;
+	int32 num_sample = 4;
+	int32 num_classes = 5;
+	bool feature_transform=6;
+	bool GPU = 7;
+        }
+
