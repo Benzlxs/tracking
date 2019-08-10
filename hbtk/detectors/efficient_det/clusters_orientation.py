@@ -66,7 +66,7 @@ def find_optimal_bbox3d(xy, ang_reso=90, angle_range = (180-1)*np.pi/180):
         l = _w
         w = _l
 
-    return -angle_samples[ind], [w, l]
+    return -angle_samples[ind], [_w, _l]
 
 
 def find_optimal_bbox3d_without_heading(xy, ang_reso=90, angle_range = (180-1)*np.pi/180):

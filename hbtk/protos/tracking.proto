@@ -21,7 +21,8 @@ message Tracker{
         uint32 min_hits=3;
         uint32 age_tolerate=4;
         uint32 start_hits=5;
-        float ratio_hit_age=6;
+        float  ratio_hit_age=6;
+        uint32 interest_range=7;
         }
 
 message Dataset{

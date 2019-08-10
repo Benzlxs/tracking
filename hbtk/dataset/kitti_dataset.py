@@ -18,10 +18,11 @@ class Kitti_dataset(object):
         self.img_list = list(sorted(dataset_dir.glob('image_02/data/*.png')))
         self.pc_list  = list(sorted(dataset_dir.glob('velodyne_points/data/*.bin')))
         self.reduce_pc_list  = list(sorted(dataset_dir.glob('reduced_points/data/*.bin')))
-        self.det_list = list(sorted(dataset_dir.glob('detection/gt/*.txt')))
+        self.gt_list = list(sorted(dataset_dir.glob('detection/gt/*.txt')))
+        self.det_gt_list = list(sorted(dataset_dir.glob('detection/dets_gt/*.txt')))
         self.oxts_list = list(sorted(dataset_dir.glob('oxts/data/*.txt')))
         assert len(self.img_list) == len(self.pc_list), "the image and point cloud numenbr should be the same"
-        assert len(self.pc_list) == len(self.det_list), "the numebr of detection and that of point cloud should be the same"
+        assert len(self.pc_list) == len(self.gt_list), "the numebr of detection and that of point cloud should be the same"
         ###
 
         ##  pre-fetch all the pose
@@ -63,33 +64,52 @@ class Kitti_dataset(object):
     def __len__(self):
         return len(self.pc_list)
 
-    def get_detection(self, frame_id):
+    def get_gt(self, frame_id):
         """
         fetch detection data
         format: class, x, y, z, l, w, h
         """
-        assert frame_id<len(self.det_list),"number of detection is larger than that of point blocks"
+        assert frame_id<len(self.gt_list),"number of detection is larger than that of point blocks"
         dets = []
-        with open(str(self.det_list[frame_id]), 'r') as f:
+        with open(str(self.gt_list[frame_id]), 'r') as f:
             lines = f.readlines()
         _dets_ = [line.strip().split(',') for line in lines]
         for _det in _dets_:
-            if _det[0] in ['Car', 'Van', 'Pedestrian', 'Cyclist'] :
-                if _det[0] in ['Car', 'Van'] :
+            if _det[0] in ['Bg','Car', 'Van', 'Pedestrian', 'Cyclist'] :
+                if _det[0] in ['Bg']:
                     _det[0] = 0
-                if _det[0] in ['Pedestrian'] :
+                if _det[0] in ['Car', 'Van'] :
                     _det[0] = 1
-                if _det[0] in ['Cyclist'] :
+                if _det[0] in ['Pedestrian'] :
                     _det[0] = 2
+                if _det[0] in ['Cyclist'] :
+                    _det[0] = 3
                 dets.append(_det)
 
         return dets
 
 
+    def get_detection_gt(self, frame_id):
+        """
+        fetch detection data
+        format: class, x, y, z, l, w, h
+        """
+        assert frame_id<len(self.det_gt_list),"number of detection is larger than that of point blocks"
+        dets = []
+        with open(str(self.det_gt_list[frame_id]), 'r') as f:
+            lines = f.readlines()
+        _dets_ = [line.strip().split(',') for line in lines]
+        for _det in _dets_:
+            if _det[0] in ['Bg','Car', 'Van', 'Pedestrian', 'Cyclist'] :
+                if _det[0] in ['Bg']:
+                    _det[0] = 0
+                if _det[0] in ['Car', 'Van'] :
+                    _det[0] = 1
+                if _det[0] in ['Pedestrian'] :
+                    _det[0] = 2
+                if _det[0] in ['Cyclist'] :
+                    _det[0] = 3
+                dets.append(_det)
 
-
-
-
-
-
+        return dets
 

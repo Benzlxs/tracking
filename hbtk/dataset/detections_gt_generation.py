@@ -165,7 +165,7 @@ def save_detection_gt(tracking_config_path,
         object_points_clusters = []
 
         # reading detections
-        dets = Dataset.get_detection(i) #read detections
+        dets = Dataset.get_gt(i) #read detections
         dets = np.array(dets, dtype=np.float32)
         # read cropped points
         points = np.fromfile(str(Dataset.reduce_pc_list[i]),dtype=np.float32, count=-1).reshape([-1, 4])
@@ -182,13 +182,12 @@ def save_detection_gt(tracking_config_path,
                 continue
             # read the class label
             j_type = int(dets[j][0])
-            if j_type == 0:
+            if j_type == 1:
                 object_types.append('Car')
-            else:
-                if j_type == 1:
-                    object_types.append('Pedestrian')
-                else:
-                    object_types.append('Cyclist')
+            if j_type == 2:
+                object_types.append('Pedestrian')
+            if j_type == 3:
+                object_types.append('Cyclist')
             # read the size of bounding box
             _x_min = min(object_points[:,0])
             _x_max = max(object_points[:,0])
@@ -202,12 +201,13 @@ def save_detection_gt(tracking_config_path,
             heading, wl = find_optimal_bbox3d(_xy_c)
             # saving the results
             confidence = 1.0
+            # heading = dets[j][7]
             xyz_lwhr_confid.append([ _x_c, _y_c, _z_min, wl[1], wl[0], dets[j][6], heading, confidence])
             # remove the objectness points
             points = points[~indices[:,0],:]
 
         # do efficient detection
-        road_parameter_path = str(Dataset.det_list[i]).replace('detection/gt','ground_plane/data')
+        road_parameter_path = str(Dataset.gt_list[i]).replace('detection/gt','ground_plane/data')
         points = points_filter._filtering_(points, road_parameter_path)
         clusters, num_points = points_cluster._cluster_(points)
         clusters = clusters_filter._clusterfiltering_(clusters)
@@ -226,11 +226,12 @@ def save_detection_gt(tracking_config_path,
             _xy_c = bg_points[:,:2] - np.array([[_x_c, _y_c]])
             heading, wl = find_optimal_bbox3d(_xy_c)
             confidence = 1.0
+            # heading = 0
             xyz_lwhr_confid.append([ _x_c, _y_c, _z_min, wl[1], wl[0], 1.1*(_z_max - _z_min), heading, confidence])
             object_types.append('Bg')
 
         # save the segment results
-        result_file_path = str(Dataset.det_list[i]).replace('/gt/','/dets_gt/')
+        result_file_path = str(Dataset.gt_list[i]).replace('/gt/','/dets_gt/')
         with open(result_file_path, 'w') as f:
             for m in range(len(object_types)):
                 ty = object_types[m]
