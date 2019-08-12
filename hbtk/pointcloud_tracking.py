@@ -601,11 +601,99 @@ def pointcloud_tracking_det(config_path=None,
     wait = input("PRESS ENTER TO CLOSE.")
 
 
+def pointcloud_tracking_within_ranges(config_path=None,
+                                      output_dir='./results/',
+                                      phases = ['2011_09_26_drive_0001_sync', '2011_09_26_drive_0020_sync',
+                                                '2011_09_26_drive_0035_sync', '2011_09_26_drive_0084_sync'],
+                                      ranges = [10,20,30,40,50,60,70,80],):
+    # read config file
+    config = pipeline_pb2.TrackingPipeline()
+    if output_dir is not None:
+        output_folder_dir = Path(output_dir)
+        output_folder_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(config_path, "r") as f:
+        protos_str = f.read()
+        text_format.Merge(protos_str, config)
+    text_file_path = output_folder_dir / 'efficiency_saving.txt'
+    text_file = open(str(text_file_path),'w')
+    for pha in phases:
+        for ran in ranges:
+            print("Processing phase:{}, range:{}".format(pha, ran))
+            config.dataset.phase = pha
+            config.tracker.interest_range = ran
+            num_frames, num_full_detection, num_hybrid_detection = \
+                                        _tracking_within_one_range(config)
+            text_file.write('%s,%d,%d,%d,%d \n'%(pha, ran, num_frames, num_full_detection, num_hybrid_detection))
+
+    text_file.close()
+
+def _tracking_within_one_range(config):
+    """
+    Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
+    detection method, and segment+pointNet classification is used as high-level detection method,
+    Pipeline: current frame ----> segmentation ---> data association ----> unmathced proposals
+           ----> classification model ----> next frame
+    """
+
+    detector_config = config.detector
+    filter_config = config.filter
+    tracker_config = config.tracker
+    dataset_config = config.dataset
+
+    # initialization
+    Dataset = Kitti_dataset(dataset_config)
+    mot_tracker = Sort_3d(config=tracker_config, data_association=filter_config.data_association)
+
+    # read calibration data
+    calib_data_velo_2_cam = Dataset.calib_data_velo_2_cam
+    calib_data_cam_2_cam = Dataset.calib_data_cam_2_cam
+    robot_poses = []
+    global_maps = None
+
+    # tracking
+    num_full_detection  = 0
+    num_hybrid_detection  = 0
+    for i in range(0, Dataset.__len__()):
+        # robot positions
+        dets = Dataset.get_detection_gt(i)
+        local_points = np.zeros((4, len(dets)+1), dtype=np.float32)
+        local_points[3,:] = 1
+        dets = np.array(dets, dtype=np.float32)
+        # local_points[:,0] is position for robot
+        local_points[0,1:] = dets[:,1]
+        local_points[1,1:] = dets[:,2]
+        local_points[2,1:] = dets[:,3]
+        # convert into global for robot
+        global_points = Dataset.pose[i].dot(local_points)
+        cur_robot_pose = [global_points[0,0], global_points[1,0], Dataset.yaw[i]]
+        robot_poses.append(cur_robot_pose)
+        # objects global position
+        dets[:,1] = global_points[0,1:]
+        dets[:,2] = global_points[1,1:]
+        dets[:,3] = global_points[2,1:]
+        dets[:,7] += cur_robot_pose[2] # theta
+
+        # prediction step
+        # data associations
+        # updating step
+        trackers, num_classification_run = mot_tracker.update_range(dets, cur_robot_pose)
+
+
+        num_full_detection += dets.shape[0]
+        num_hybrid_detection += num_classification_run
+    # print("Nume of frames:{}".format(Dataset.__len__()))
+    # print("Full detectors:{}".format(num_full_detection))
+    # print("Efficient detectors with tracking:{}".format(num_hybrid_detection))
+    # print("Ratio:{}".format(num_hybrid_detection/num_full_detection))
+    return Dataset.__len__(), num_full_detection, num_hybrid_detection
+
+
 def pointcloud_tracking_within_one_range(config_path=None,
-                                         output_dir='./results',
-                                         display = False,
-                                         display_trajectory = False,
-                                         downsample_num = 400,):
+                                          output_dir=None,
+                                          display = False,
+                                          display_trajectory = False,
+                                          downsample_num = 400,):
     """
     Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
     detection method, and segment+pointNet classification is used as high-level detection method,
@@ -614,8 +702,10 @@ def pointcloud_tracking_within_one_range(config_path=None,
     """
     # read configuration file
     config = pipeline_pb2.TrackingPipeline()
-    output_folder_dir = Path(output_dir)
-    output_folder_dir.mkdir(parents=True, exist_ok=True)
+    if output_dir is not None:
+        output_folder_dir = Path(output_dir)
+        output_folder_dir.mkdir(parents=True, exist_ok=True)
+
     with open(config_path, "r") as f:
         protos_str = f.read()
         text_format.Merge(protos_str, config)
