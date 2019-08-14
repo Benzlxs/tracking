@@ -330,7 +330,7 @@ class ClustersFiltering(object):
 
         return s_clusters
 
-    def filtering_with_num_points(self, clusters):
+    def filtering_with_num_points_oldversion(self, clusters):
         """
         Filtering clusters with number of inner points, and the selectd region should be in front of car, and the boundary
         truncation shouold not happen.
@@ -394,5 +394,24 @@ class ClustersFiltering(object):
 
             else:
                 s_clusters.append(lab_clusters[i])
+
+        return s_clusters
+
+    def filtering_with_num_points(self, clusters):
+        """
+        Filtering clusters with number of inner points, and the selectd region should be in front of car, and the boundary
+        truncation shouold not happen.
+        The selected region is a frustum
+        The filtering procedures:
+            1. give the occlusion level for every clustering within the selected region
+            2. use the number of points to filter out most of useless region
+        Angle calculation is from left to right and +y-axis to -y-axis under kITTI convention
+        """
+        s_clusters = []  # all selected clusters
+
+        for c in clusters:
+            num = c.shape[0]
+            if num > self.min_points_cluster:
+                s_clusters.append(c)
 
         return s_clusters

@@ -20,6 +20,7 @@ class Kitti_dataset(object):
         self.reduce_pc_list  = list(sorted(dataset_dir.glob('reduced_points/data/*.bin')))
         self.gt_list = list(sorted(dataset_dir.glob('detection/gt/*.txt')))
         self.det_gt_list = list(sorted(dataset_dir.glob('detection/dets_gt/*.txt')))
+        self.det_classification_list = list(sorted(dataset_dir.glob('detection/dets_class/*.txt')))
         self.oxts_list = list(sorted(dataset_dir.glob('oxts/data/*.txt')))
         assert len(self.img_list) == len(self.pc_list), "the image and point cloud numenbr should be the same"
         assert len(self.pc_list) == len(self.gt_list), "the numebr of detection and that of point cloud should be the same"
@@ -110,6 +111,30 @@ class Kitti_dataset(object):
                 if _det[0] in ['Cyclist'] :
                     _det[0] = 3
                 dets.append(_det)
+
+        return dets
+
+    def get_detection_class(self, frame_id):
+        """
+        fetch detection data
+        format: class, x, y, z, l, w, h
+        """
+        assert frame_id<len(self.det_gt_list),"number of detection is larger than that of point blocks"
+        dets = []
+        with open(str(self.det_classification_list[frame_id]), 'r') as f:
+            lines = f.readlines()
+        _dets_ = [line.strip().split(',') for line in lines]
+        for _det in _dets_:
+            if _det[0] in ['Bg','Car', 'Van', 'Pedestrian', 'Cyclist'] :
+                if _det[0] in ['Bg']:
+                    _det[0] = 0
+                if _det[0] in ['Car', 'Van'] :
+                    _det[0] = 1
+                if _det[0] in ['Pedestrian'] :
+                    _det[0] = 2
+                if _det[0] in ['Cyclist'] :
+                    _det[0] = 3
+                dets.append(_det[:-1])
 
         return dets
 
