@@ -62,7 +62,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
 
 
-def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 0.9):
+def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 0.4): #0.9
   """
   Assigns detections to tracked object (both represented as bounding boxes)
   Args:
@@ -80,8 +80,9 @@ def associate_detections_to_trackers_distance(detections,trackers,dist_threshold
   _dets = np.expand_dims(_dets, axis=1)
   _trks = np.expand_dims(_trks, axis=0)
 
-  iou_matrix = (_dets[:, :, 0] - _trks[:, :, 0])**2 + (_dets[:, :, 1] - _trks[:, :, 1])**2 + (_dets[:, :, 2] - _trks[:, :, 2])**2
-
+  iou_matrix = (_dets[:, :, 0] - _trks[:, :, 0])**2 + (_dets[:, :, 1] - _trks[:, :, 1])**2  + (_dets[:, :, 2] - _trks[:, :, 2])**2
+  # cutting off the heading error
+  iou_matrix = (_dets[:, :, 0] - _trks[:, :, 0])**2 + (_dets[:, :, 1] - _trks[:, :, 1])**2 #  + (_dets[:, :, 2] - _trks[:, :, 2])**2
   iou_matrix += small_number
   iou_matrix = np.sqrt(iou_matrix)
 
