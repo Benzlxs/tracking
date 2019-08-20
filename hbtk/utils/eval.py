@@ -1,6 +1,6 @@
 import io as sysio
 import time
-
+import fire
 import numba
 from pathlib import Path
 import numpy as np
@@ -18,37 +18,6 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(ROOT_DIR)
 
 # select the useful information
-def read_the_detection_bk(path, class_type=None):
-    """
-    select the some detections
-    """
-    dets = []
-    with open(str(path), 'r') as f:
-        lines = f.readlines()
-    _dets_ = [line.strip().split(',') for line in lines]
-    for _det in _dets_:
-        if _det[0] in ['Bg','Car', 'Van', 'Pedestrian', 'Cyclist']:
-            if _det[0] in ['Bg']:
-                _det[0] = 0
-            if _det[0] in ['Car', 'Van'] :
-                _det[0] = 1
-            if _det[0] in ['Pedestrian'] :
-                _det[0] = 2
-            if _det[0] in ['Cyclist'] :
-                _det[0] = 3
-            dets.append(_det[:-1])
-    if class_type == None:
-        dets = np.array( dets, dtype=np.float32)
-        return dets
-    else:
-        dets = np.array( dets, dtype=np.float32)
-        if class_type=='Car':
-            dets[:,8] = dets[:,9] + dets[:,11]
-            return dets[:,:9]
-        if class_type == 'Pedestrian':
-            return dets[:,[0,1,2,3,4,5,6,7,10]]
-        if class_type == 'Cyclist':
-            return dets[:,[0,1,2,3,4,5,6,7,12]]
 
 def read_the_detection(path):
     """
@@ -72,7 +41,7 @@ def read_the_detection(path):
     dets = np.array( dets, dtype=np.float32)
     return dets
 
-def evaluate_dataset(dataset_dir,
+def evaluate_dataset_det(dataset_dir,
                      phase_names,
                      current_class=['Bg','Car','Pedestrian','Cyclist'],
                      ROC_plot=True,
@@ -89,6 +58,7 @@ def evaluate_dataset(dataset_dir,
     for phase_name in phase_names:
         det_dir = dataset_dir/phase_name/'detection/'
         det_annos_list = list(sorted(det_dir.glob('dets_class/*.txt')))
+        #det_annos_list = list(sorted(det_dir.glob('dets_trk/*.txt')))
         for i in range(len(det_annos_list)):
             det_annos.append(read_the_detection(det_annos_list[i]))
 
@@ -110,7 +80,7 @@ def evaluate_dataset(dataset_dir,
 
         if class_name == 'Car':
             y_gt = np.where(det_annos[:,0]==1., 1. , 0. )
-            y_pred = det_annos[:,9] + det_annos[:,11]
+            y_pred = det_annos[:,9]
 
         if class_name == 'Pedestrian':
             y_gt = np.where(det_annos[:,0]==2., 1. , 0. )
@@ -118,7 +88,7 @@ def evaluate_dataset(dataset_dir,
 
         if class_name == 'Cyclist':
             y_gt = np.where(det_annos[:,0]==3., 1. , 0. )
-            y_pred = det_annos[:,12]
+            y_pred = det_annos[:,11]
 
         mAP = average_precision_score(y_gt, y_pred)
         mAP_to_class[class_name] = mAP
@@ -151,10 +121,228 @@ def evaluate_dataset(dataset_dir,
 
     return mAP_to_class
 
-if __name__=="__main__":
+
+def evaluate_dataset_trk_det(dataset_dir,
+                             phase_names,
+                             current_class=['Bg','Car','Pedestrian','Cyclist'],
+                             ROC_plot=True,
+                             PRC_plot=True,
+                             save_path='../results/'):
+    """
+    Evaluation of one dataset
+    """
+    dataset_dir = Path(dataset_dir)
+    if not isinstance(phase_names, list):
+        phase_names = [phase_names]
+
+    trk_annos = []
+    for phase_name in phase_names:
+        trk_dir = dataset_dir/phase_name/'detection/'
+        # det_annos_list = list(sorted(det_dir.glob('dets_class/*.txt')))
+        trk_annos_list = list(sorted(trk_dir.glob('dets_trk/*.txt')))
+        for i in range(len(trk_annos_list)):
+            trk_annos.append(read_the_detection(trk_annos_list[i]))
+
+    trk_annos = np.concatenate(trk_annos, axis=0)
+
+    det_annos = []
+    for phase_name in phase_names:
+        det_dir = dataset_dir/phase_name/'detection/'
+        det_annos_list = list(sorted(det_dir.glob('dets_class/*.txt')))
+        for i in range(len(det_annos_list)):
+            det_annos.append(read_the_detection(det_annos_list[i]))
+    det_annos = np.concatenate(det_annos, axis=0)
+
+    #assert det_annos.shape[0]==trk_annos.shape[0], "The number of det and trk results should be the same!"
+
+
+    class_to_name = {
+        0:'Bg',
+        1: 'Car',
+        2: 'Pedestrian',
+        3: 'Cyclist',
+    }
+    name_to_class = {v:n for n, v in class_to_name.items()}
+    mAP_to_class = {}
+
+    for class_name in current_class:
+        if class_name == 'Bg':
+            y_gt_det = np.where(det_annos[:,0]==0., 1. , 0. )
+            y_pred_det = det_annos[:,8]
+            y_gt_trk = np.where(trk_annos[:,0]==0., 1. , 0. )
+            y_pred_trk = trk_annos[:,8]
+
+        if class_name == 'Car':
+            y_gt_det = np.where(det_annos[:,0]==1., 1. , 0. )
+            y_pred_det = det_annos[:,9]
+            y_gt_trk = np.where(trk_annos[:,0]==1., 1. , 0. )
+            y_pred_trk = trk_annos[:,9]
+
+        if class_name == 'Pedestrian':
+            y_gt = np.where(det_annos[:,0]==2., 1. , 0. )
+            y_pred = det_annos[:,10]
+
+        if class_name == 'Cyclist':
+            y_gt_det = np.where(det_annos[:,0]==3., 1. , 0. )
+            y_pred_det = det_annos[:,11]
+            y_gt_trk = np.where(trk_annos[:,0]==3., 1. , 0. )
+            y_pred_trk = trk_annos[:,11]
+
+
+        mAP_det = average_precision_score(y_gt_det, y_pred_det)
+        mAP_to_class[class_name] = mAP_det
+
+        mAP_trk = average_precision_score(y_gt_trk, y_pred_trk)
+        mAP_to_class[class_name] = mAP_trk
+
+
+        precision_det, recall_det, thresholds_det = precision_recall_curve(y_gt_det, y_pred_det)
+        fpr_det, tpr_det, _ = metrics.roc_curve(y_gt_det, y_pred_det)
+
+        precision_trk, recall_trk, thresholds_trk = precision_recall_curve(y_gt_trk, y_pred_trk)
+        fpr_trk, tpr_trk, _ = metrics.roc_curve(y_gt_trk, y_pred_trk)
+
+        if ROC_plot:
+            fig, ax = plt.subplots()
+            plt.plot(fpr_det, tpr_det, linestyle='dashed', linewidth=4, label='det_only')
+            plt.plot(fpr_trk, tpr_trk, linestyle='dashed', linewidth=4, label='with_trk')
+
+            ax.legend()
+            plt.xlabel('Speciality')
+            plt.ylabel('Sensitivity')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            #plt.title('Roc curve of {}: AP={}%'.format(class_name ,int(mAP*100)))
+            plt.title("ROC")
+            # plt.show()
+            plt.savefig("Roc_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+
+
+        if PRC_plot:
+            # fig, ax = plt.subplots()
+            plt.figure()
+            # plt.plot(recall, precision)
+            plt.plot(recall_det, precision_det,linestyle='dashed', linewidth=4, label='det_only')
+            plt.plot(recall_trk, precision_trk,linestyle='dashed', linewidth=4, label='with_trk')
+
+            plt.legend()
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            #plt.title('PRC curve of {}: AP={}%'.format(class_name ,int(100*mAP)))
+            plt.title("PRC")
+            # plt.show()
+            plt.savefig("PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+
+
+    return mAP_to_class
+
+
+def evaluate_dataset_trk(dataset_dir,
+                     phase_names,
+                     current_class=['Bg','Car','Pedestrian','Cyclist'],
+                     ROC_plot=True,
+                     PRC_plot=True,
+                     save_path='../results/'):
+    """
+    Evaluation of one dataset
+    """
+    dataset_dir = Path(dataset_dir)
+    if not isinstance(phase_names, list):
+        phase_names = [phase_names]
+
+    det_annos = []
+    for phase_name in phase_names:
+        det_dir = dataset_dir/phase_name/'detection/'
+        # det_annos_list = list(sorted(det_dir.glob('dets_class/*.txt')))
+        det_annos_list = list(sorted(det_dir.glob('dets_trk/*.txt')))
+        for i in range(len(det_annos_list)):
+            det_annos.append(read_the_detection(det_annos_list[i]))
+
+    det_annos = np.concatenate(det_annos, axis=0)
+
+    class_to_name = {
+        0:'Bg',
+        1: 'Car',
+        2: 'Pedestrian',
+        3: 'Cyclist',
+    }
+    name_to_class = {v:n for n, v in class_to_name.items()}
+    mAP_to_class = {}
+
+    for class_name in current_class:
+        if class_name == 'Bg':
+            y_gt = np.where(det_annos[:,0]==0., 1. , 0. )
+            y_pred = det_annos[:,8]
+
+        if class_name == 'Car':
+            y_gt = np.where(det_annos[:,0]==1., 1. , 0. )
+            y_pred = det_annos[:,9]
+
+        if class_name == 'Pedestrian++':
+            y_gt = np.where(det_annos[:,0]==2., 1. , 0. )
+            y_pred = det_annos[:,10]
+
+        if class_name == 'Cyclist':
+            y_gt = np.where(det_annos[:,0]==3., 1. , 0. )
+            y_pred = det_annos[:,11]
+
+        mAP = average_precision_score(y_gt, y_pred)
+        mAP_to_class[class_name] = mAP
+
+        precision, recall, thresholds = precision_recall_curve(y_gt, y_pred)
+        fpr, tpr, _ = metrics.roc_curve(y_gt, y_pred)
+
+        if ROC_plot:
+            plt.figure()
+            plt.plot(fpr, tpr)
+
+            plt.xlabel('Speciality')
+            plt.ylabel('Sensitivity')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            plt.title('Roc curve of {}: AP={}%'.format(class_name ,int(mAP*100)))
+            plt.show()
+
+
+        if PRC_plot:
+            plt.figure()
+            plt.plot(recall, precision)
+
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            plt.title('PRC curve of {}: AP={}%'.format(class_name ,int(100*mAP)))
+            plt.show()
+
+    return mAP_to_class
+
+def run_det_results():
     dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
     phase_name = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync']
-    mAPs = evaluate_dataset(dataset_dir, phase_name)
+    mAPs = evaluate_dataset_det(dataset_dir, phase_name)
+
+
+def run_trk_results():
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    phase_name = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync']
+    mAPs = evaluate_dataset_trk(dataset_dir, phase_name)
+
+
+
+def run_det_trk_results():
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    phase_name = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync']
+    mAPs = evaluate_dataset_trk_det(dataset_dir, phase_name)
+
+
+
+
+if __name__=='__main__':
+    fire.Fire()
+    """
     dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26/2011_09_26_drive_0084_sync/detection/'
     dataset_dir = Path(dataset_dir)
     # read the gt_annos, type as list
@@ -171,7 +359,7 @@ if __name__=="__main__":
     det_annos = np.concatenate(det_annos, axis=0)
 
     y_gt = np.where(det_annos[:,0]==1.,1. ,0. )
-    y_pred = det_annos[:,9] + det_annos[:,11]
+    y_pred = det_annos[:,9]
     # y_pred = det_annos[:,10]
 
     mAP = average_precision_score(y_gt, y_pred)
@@ -207,5 +395,5 @@ if __name__=="__main__":
     }
 
     eval_classes = ['Car', 'Pedestrian', 'Cyclist']
-
+    """
 

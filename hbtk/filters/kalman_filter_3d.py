@@ -1,9 +1,11 @@
 import numpy as np
 from numpy import dot, linalg
 # from filterpy.kalman import KalmanFilter
+import sys
+very_very_small_number = sys.float_info.min
 
 
-def checking_updating(trk_size, det_size, len_thr = 0.5, wid_thr = 0.5):
+def checking_updating_size(trk_size, det_size, len_thr = 0.5, wid_thr = 0.5):
     assert len(trk_size) == len(det_size), "len of tracker and detector should be the same"
     if np.abs(trk_size[0] - det_size[0])>len_thr or \
             np.abs(trk_size[1] -det_size[1]) >wid_thr:
@@ -17,8 +19,20 @@ def fuse_probability(trk_c, det_c):
     assert len(trk_c) == len(det_c), "the variables shold have the same shape"
     fuse_confid = []
     normalization = sum([trk_c[i]*det_c[i] for i in range(len(trk_c))])
-    for i in range(len(trk_c)):
-        fuse_confid.append(trk_c[i]*det_c[i]/normalization)
+
+    if normalization == 0.0:
+        normalization = sum([(trk_c[i]+very_very_small_number)*(det_c[i]+very_very_small_number) for i in range(len(trk_c))])
+        print('######## One Nan data...........')
+        print("tracking confidence:{}".format(trk_c))
+        print("detection confidence:{}".format(det_c))
+
+        for i in range(len(trk_c)):
+            fuse_confid.append((trk_c[i]+very_very_small_number)*(det_c[i]+very_very_small_number)/normalization)
+    else:
+        for i in range(len(trk_c)):
+            fuse_confid.append(trk_c[i]*det_c[i]/normalization)
+
+
 
     return fuse_confid
 
@@ -100,15 +114,24 @@ class ExtendKalmanBoxTracker_3D(object):
     self.width    = det[5]
     self.height   = det[6]
     self.heading  = det[7]
+    if len(det) == 13:
+        self.num_points = det[12]
+    else:
+        self.num_points = None
+
     self.state_det = None
     # no ground truth
     if len(det) == 8:
         self.confid  = [1]  # which is ground truth
     if len(det) == 9:
         self.confid  =  [det[8]]  # confidence with one category
-    if len(det) == 13:   # detection with classification confidence
-        self.confid =  [ det[8], det[9]+det[11], det[10], det[12] ]
+    if len(det) >= 12:   # detection with classification confidence
+        # self.confid =  [ det[8], det[9]+det[11], det[10], det[12] ]
+        self.confid = [ det[8], det[9], det[10], det[11] ]  # 4 classes
         #              [ Background, Car, Pedestrain, Cyclist ]
+    # the number of counts for certain classification
+    num_classes = 4  # make sure that it has the same size with confidence
+    self.num_counts = np.zeros((num_classes), dtype=np.int)
 
     self.history.append([self.X[0], self.X[1], self.X[2]])
 
@@ -159,15 +182,16 @@ class ExtendKalmanBoxTracker_3D(object):
             self.confid  = [1]  # which is ground truth
         if len(det) == 9:
             self.confid  =  [det[8]]  # confidence with one category
-        if len(det) == 13:   # detection with classification confidence
-            self.confid =  [ det[8], det[9]+det[11], det[10], det[12] ]
+        if len(det) == 12:   # detection with classification confidence
+            #self.confid =  [ det[8], det[9]+det[11], det[10], det[12] ]
+            self.confid = [det[8], det[9], det[10], det[11]]
             #              [ Background, Car, Pedestrain, Cyclist ]
 
 
 
     self.history.append([self.X[0], self.X[1], self.X[2]])
 
-  def update_fusion(self, det, label_to_num,  fusion_confidence=0.98):
+  def update_fusion(self, det, label_to_num,  fusion_confidence=0.98, points_threshold = 15, counts_threshold=10):
     """
     Updates the state vector with observed bbox.
     Adding the function of confidence fusion
@@ -200,31 +224,51 @@ class ExtendKalmanBoxTracker_3D(object):
     self.P = dot(dot(I_KH, self.P), I_KH.T) + dot(dot(K, self.R), K.T)
 
     if self.state_det == label_to_num.good_enough:
-        self.category = det[0]
         self.z_s      = (det[3] + self.z_s)/2
         self.length   = (det[4] + self.length)/2
         self.width    = (det[5] + self.width)/2
         self.height   = (det[6] + self.height)/2
         self.heading  = (det[7] + self.heading)/2
+        self.num_points = det[12]
+        self.category = det[0]
+        # test this function later
+        det[0] = self.category
+        det[8] = self.confid[0]
+        det[9] = self.confid[1]
+        det[10]= self.confid[2]
+        det[11]= self.confid[3]
+
+
     else:
         # checking whether it is a new observation or not
         # if yes, fuse probability, if no, keep waiting
-        trk_size = [self.length, self.width]
-        det_size = [det[4], det[5]]
+        #trk_size = [self.length, self.width]
+        #det_size = [det[4], det[5]]
         # 0:bg, 1:car, 2, pedestrian, 3:cyclist
-        if self.category >=2:
-            _l = 0.25
-            _w = 0.25
-        else:
-            # bg and car are the large objects
-            _l = 0.8
-            _w = 0.8
+        #if self.category >=2:
+        #    _l = 0.25
+        #    _w = 0.25
+        #else:
+        #    # bg and car are the large objects
+        #    _l = 0.8
+        #    _w = 0.8
+        #update_flage = checking_updating_size(trk_size, det_size, len_thr = _l, wid_thr=_w)
 
-        update_flage = checking_updating(trk_size, det_size, len_thr = _l, wid_thr=_w)
+        trk_num_points = self.num_points
+        det_num_points = det[12]
+        trk_category = self.category
+        if trk_category>=label_to_num.unknow_object_label:
+            trk_category -= label_to_num.unknow_object_label
+        det_category = det[0]
+        if trk_category == det_category and abs(trk_num_points-det_num_points)>points_threshold:
+            update_flage = True
+        else:
+            update_flage = False
 
         # fuse the detection confidence together
         if update_flage:
-            _det_confid = [ det[8], det[9]+det[11], det[10], det[12] ]
+            # _det_confid = [ det[8], det[9]+det[11], det[10], det[11] ]
+            _det_confid = [ det[8], det[9], det[10], det[11] ]
             _fuse_confid = fuse_probability(self.confid, _det_confid)
             self.confid = _fuse_confid
             # updating other parameters
@@ -234,18 +278,42 @@ class ExtendKalmanBoxTracker_3D(object):
             self.width    = (det[5] + self.width)/2
             self.height   = (det[6] + self.height)/2
             self.heading  = (det[7] + self.heading)/2
+            self.num_points = det[12]
             # checking whether it is good enough or not
+
+            # pass back to det
+            det[8] = self.confid[0]
+            det[9] = self.confid[1]
+            det[10]= self.confid[2]
+            det[11]= self.confid[3]
 
             _max_confid = max(self.confid)
             if _max_confid > fusion_confidence:
-                self.state_det = label_to_num.good_enough
                 _ind_ = self.confid.index(_max_confid)
-                self.confid = [0.]*len(self.confid)
-                self.confid[_ind_] = 1.   # 100% sure
-
-
+                self.num_counts[_ind_] +=1
+                #self.state_det = label_to_num.good_enough
+                #_ind_ = self.confid.index(_max_confid)
+                #self.confid = [0.]*len(self.confid)
+                #self.confid[_ind_] = 1.   # 100% sure
+            _max_counts = max(self.num_counts)
+            if _max_counts > counts_threshold:
+                self.state_det = label_to_num.good_enough
+                print("*********One certain classification!")
+        else:
+            # use the PDF of tracker to update the PDF of detector
+            _det_confid = [ det[8], det[9], det[10], det[11] ]
+            _fuse_confid = fuse_probability(self.confid, _det_confid)
+            det[8] = _fuse_confid[0]
+            det[9] = _fuse_confid[1]
+            det[10]= _fuse_confid[2]
+            det[11]= _fuse_confid[3]
+    check_nan = np.argwhere(np.isnan(det))
+    if check_nan.size!=0:
+        import pudb; pudb.set_trace()
 
     self.history.append([self.X[0], self.X[1], self.X[2]])
+
+    return det
 
   def predict(self):
     """

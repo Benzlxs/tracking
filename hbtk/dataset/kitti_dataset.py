@@ -134,7 +134,7 @@ class Kitti_dataset(object):
                     _det[0] = 2
                 if _det[0] in ['Cyclist'] :
                     _det[0] = 3
-                dets.append(_det[:-1])
+                dets.append(_det)
 
         return dets
 

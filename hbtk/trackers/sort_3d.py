@@ -131,7 +131,7 @@ class Sort_3d(object):
                                 (trk.X[1] - robot_loc[1])**2)
             # trk enters the interested range and without classification, thus,
             # run classification model
-            if _distance < self.interest_range and int(trk.category)== label_to_num.unknow_object_label:
+            if _distance < self.interest_range and int(trk.category) >= label_to_num.unknow_object_label:
                 num_classification_run +=1
 
             trk.update(object_dets[d,:][0], reset_confid=reset_confid)
@@ -143,7 +143,7 @@ class Sort_3d(object):
                                 (object_dets[i,2] - robot_loc[1])**2)
             # the unknow object label
             if _distance > self.interest_range:
-                object_dets[i,0] = label_to_num.unknow_object_label
+                object_dets[i,0] += label_to_num.unknow_object_label
             else:
                 num_classification_run += 1
 
@@ -203,10 +203,12 @@ class Sort_3d(object):
                                 (trk.X[1] - robot_loc[1])**2)
             # trk enters the interested range and without classification, thus,
             # run classification model
-            if _distance < self.interest_range and int(trk.category) == label_to_num.unknow_object_label:
+            if _distance < self.interest_range and int(trk.category) >= label_to_num.unknow_object_label:
                 num_classification_run +=1
 
-            trk.update_fusion(object_dets[d,:][0], label_to_num,  fusion_confidence = self.fusion_confidence)
+            # Update the PDF of detectors with that of trackers
+            _det = trk.update_fusion(object_dets[d,:][0], label_to_num,  fusion_confidence = self.fusion_confidence)
+            object_dets[d,:] = _det[:]
 
 
         #create and initialise new trackers for unmatched detections
@@ -216,22 +218,24 @@ class Sort_3d(object):
                                 (object_dets[i,2] - robot_loc[1])**2)
             # the unknow object label
             if _distance > self.interest_range:
-                object_dets[i,0] = label_to_num.unknow_object_label
+                object_dets[i,0] += label_to_num.unknow_object_label
+                # object_dets[i,0] = object_dets[i,0]
             else:
                 num_classification_run += 1
 
             # give different label
             trk = ExtendKalmanBoxTracker_3D( object_dets[i,:])
-            _max_confid = max(trk.confid)
-            if _max_confid < self.fusion_confidence:
-                # need more data
-                trk.state_det = label_to_num.need_more
-            else:
-                # good enough, no classification anymore
-                trk.state_det = label_to_num.good_enough
-                _ind_ = trk.confid.index(_max_confid)
-                trk.confid = [0.]*len(trk.confid)
-                trk.confid[_ind_] = 1.   # 100% sure
+            trk.state_det = label_to_num.need_more
+            #_max_confid = max(trk.confid)
+            #if _max_confid < self.fusion_confidence:
+            #    # need more data
+            #    trk.state_det = label_to_num.need_more
+            #else:
+            #    # good enough, no classification anymore
+            #    trk.state_det = label_to_num.good_enough
+            #    _ind_ = trk.confid.index(_max_confid)
+            #    trk.confid = [0.]*len(trk.confid)
+            #    trk.confid[_ind_] = 1.   # 100% sure
 
             self.trackers.append(trk)
         i = len(self.trackers)
