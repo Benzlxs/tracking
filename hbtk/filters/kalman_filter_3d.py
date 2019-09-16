@@ -78,7 +78,7 @@ class ExtendKalmanBoxTracker_3D(object):
   This class represents the internel state of individual tracked objects observed as bbox.
   """
   count = 0
-  def __init__(self,det):
+  def __init__(self, det, frame_id):
     """
     Initialises a tracker using initial bounding box.
     Det: [class, x, y, z, l, w, h, theta]
@@ -132,8 +132,17 @@ class ExtendKalmanBoxTracker_3D(object):
     # the number of counts for certain classification
     num_classes = 4  # make sure that it has the same size with confidence
     self.num_counts = np.zeros((num_classes), dtype=np.int)
-
     self.history.append([self.X[0], self.X[1], self.X[2]])
+
+    # the code below is for saving all the detection confidence
+    self.frame_ids_hist = [frame_id]
+    self.detection_confidence_hist = [self.confid]
+    self.tracker_confidence_hist = [self.confid]
+    self.detection_class_hist = [self.category]
+    self.tracker_class_hist = [self.category]
+
+    # self.save_tracker_id = 0
+
 
   def update(self, det, reset_confid=True):
     """
@@ -191,7 +200,7 @@ class ExtendKalmanBoxTracker_3D(object):
 
     self.history.append([self.X[0], self.X[1], self.X[2]])
 
-  def update_fusion(self, det, label_to_num,  fusion_confidence=0.98, points_threshold = 15, counts_threshold=10):
+  def update_fusion(self, det, label_to_num, frame_id, fusion_confidence=0.98, points_threshold = 15, counts_threshold=9):
     """
     Updates the state vector with observed bbox.
     Adding the function of confidence fusion
@@ -222,6 +231,11 @@ class ExtendKalmanBoxTracker_3D(object):
         I_KH = np.array([1 - KH])
 
     self.P = dot(dot(I_KH, self.P), I_KH.T) + dot(dot(K, self.R), K.T)
+
+    # save all
+    self.frame_ids_hist.append(frame_id)
+    self.detection_confidence_hist.append([det[8], det[9], det[10], det[11]])
+    self.detection_class_hist.append(det[0])
 
     if self.state_det == label_to_num.good_enough:
         self.z_s      = (det[3] + self.z_s)/2
@@ -257,6 +271,7 @@ class ExtendKalmanBoxTracker_3D(object):
         trk_num_points = self.num_points
         det_num_points = det[12]
         trk_category = self.category
+        # object enter the range of interest
         if trk_category>=label_to_num.unknow_object_label:
             trk_category -= label_to_num.unknow_object_label
         det_category = det[0]
@@ -307,6 +322,11 @@ class ExtendKalmanBoxTracker_3D(object):
             det[9] = _fuse_confid[1]
             det[10]= _fuse_confid[2]
             det[11]= _fuse_confid[3]
+
+    # save the class
+    self.tracker_confidence_hist.append(self.confid)
+    self.tracker_class_hist.append(self.category)
+
     check_nan = np.argwhere(np.isnan(det))
     if check_nan.size!=0:
         import pudb; pudb.set_trace()

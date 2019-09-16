@@ -6,11 +6,12 @@ from hbtk.filters.kalman_filter_3d import ExtendKalmanBoxTracker_3D
 LABEL_NUM = collections.namedtuple('LABEL_NUM',['unknow_object_label', 'need_more', 'good_enough'])
 label_to_num = LABEL_NUM(unknow_object_label=256, need_more=4, good_enough=8)
 
+
 class Sort_3d(object):
     """
     SORT: A Simple, Online and Realtime Tracker
     """
-    def __init__(self, config=None, data_association="Hungarian_dist", fusion_confidence=0.98):
+    def __init__(self, config=None, data_association="Hungarian_dist", fusion_confidence=0.98, result_trk_folder=None):
         """
         Sets key parameters for SORT
         Args:
@@ -38,6 +39,9 @@ class Sort_3d(object):
                 }
         self.data_association = data_association_apparoch_dic[data_association]
 
+        self.save_directory = result_trk_folder
+
+        self.save_tracker_id = 0
 
     def update(self, object_dets, reset_confid=True):
         """
@@ -166,7 +170,7 @@ class Sort_3d(object):
         return np.empty((0,5)), num_classification_run
 
 
-    def update_range_fusion(self, object_dets, robot_loc, reset_confid=True):
+    def update_range_fusion(self, object_dets, robot_loc, frame_id, reset_confid=True, save_tracking_results=True):
         """
         Args:
             object_dets:  a numpy array of detections in the format
@@ -202,12 +206,13 @@ class Sort_3d(object):
             _distance = np.sqrt((trk.X[0] - robot_loc[0])**2 + \
                                 (trk.X[1] - robot_loc[1])**2)
             # trk enters the interested range and without classification, thus,
-            # run classification model
+            # run classification model, when object enterst the range of
+            # interest
             if _distance < self.interest_range and int(trk.category) >= label_to_num.unknow_object_label:
                 num_classification_run +=1
 
             # Update the PDF of detectors with that of trackers
-            _det = trk.update_fusion(object_dets[d,:][0], label_to_num,  fusion_confidence = self.fusion_confidence)
+            _det = trk.update_fusion( object_dets[d,:][0], label_to_num,  frame_id, fusion_confidence = self.fusion_confidence)
             object_dets[d,:] = _det[:]
 
 
@@ -224,7 +229,7 @@ class Sort_3d(object):
                 num_classification_run += 1
 
             # give different label
-            trk = ExtendKalmanBoxTracker_3D( object_dets[i,:])
+            trk = ExtendKalmanBoxTracker_3D( object_dets[i,:], frame_id)
             trk.state_det = label_to_num.need_more
             #_max_confid = max(trk.confid)
             #if _max_confid < self.fusion_confidence:
@@ -249,7 +254,32 @@ class Sort_3d(object):
             i -= 1
             #remove dead tracklet
             if(trk.time_since_update > self.max_age):
-              self.trackers.pop(i)
+                self.trackers.pop(i)
+                # save the tracking and detecting results
+                if(save_tracking_results):
+                    file_name = self.save_directory/str('frame_ids_%06d.txt'% int(self.save_tracker_id))
+                    temp_array = np.array(trk.frame_ids_hist, dtype=np.float)
+                    np.savetxt(file_name, temp_array)
+
+                    file_name = self.save_directory/str('detection_confidecne_%06d.txt'% int(self.save_tracker_id))
+                    temp_array = np.array(trk.detection_confidence_hist, dtype=np.float)
+                    np.savetxt(file_name, temp_array)
+
+                    file_name = self.save_directory/str('tracker_confidence_%06d.txt'% int(self.save_tracker_id))
+                    temp_array = np.array(trk.tracker_confidence_hist, dtype=np.float)
+                    np.savetxt(file_name, temp_array)
+
+                    file_name = self.save_directory/str('detection_class_%06d.txt'% int(self.save_tracker_id))
+                    temp_array = np.array(trk.detection_class_hist, dtype=np.float)
+                    np.savetxt(file_name, temp_array)
+
+                    file_name = self.save_directory/str('tracker_class_%06d.txt'% int(self.save_tracker_id))
+                    temp_array = np.array(trk.tracker_class_hist, dtype=np.float)
+                    np.savetxt(file_name, temp_array)
+
+                    self.save_tracker_id += 1
+
+
         if(len(ret)>0):
           return np.concatenate(ret), num_classification_run
         return np.empty((0,5)), num_classification_run

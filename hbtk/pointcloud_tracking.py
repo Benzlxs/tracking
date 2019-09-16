@@ -41,7 +41,7 @@ lw = {'Bg':2,
       'Pedestrian':2,
        'Cyclist':2}
 
-class_type={0:'Bg', 1:'Car', 2:'Pedestrain', 3:'Cyclist'}
+class_type={0:'Bg', 1:'Car', 2:'Pedestrian', 3:'Cyclist'}
 LABEL_NUM = collections.namedtuple('LABEL_NUM',['unknow_object_label', 'need_more', 'good_enough'])
 label_to_num = LABEL_NUM(unknow_object_label=256, need_more=4, good_enough=8)
 
@@ -906,7 +906,6 @@ def pointcloud_tracking_within_ranges(config_path=None,
     print("Efficient detectors with tracking:{}".format(num_hybrid_detection))
     print("Ratio:{}".format(num_hybrid_detection/num_full_detection))
 
-
 def pointcloud_tracking_within_one_range_with_fusion(config_path=None,
                                                      output_dir =None,
                                                      display  = False,
@@ -1192,12 +1191,12 @@ def pointcloud_tracking_within_one_range_with_fusion(config_path=None,
     print("Efficient detectors with tracking:{}".format(num_hybrid_detection))
     print("Ratio:{}".format(num_hybrid_detection/num_full_detection))
 
-
 def __pointcloud_tracking__fusion__(config,
                                     display  = False,
                                     display_trajectory = False,
                                     save_trk_results = False,
                                     save_det_results = True,
+                                    save_all_track_det_confidence=True,
                                     fusion_confidence  = 0.98,
                                     downsample_num = 400,):
     """
@@ -1212,9 +1211,17 @@ def __pointcloud_tracking__fusion__(config,
     tracker_config = config.tracker
     dataset_config = config.dataset
 
+    # save the history of confidence change with respect to detector and
+    # trackers.
+    if save_all_track_det_confidence:
+        result_trk_folder = Path(dataset_config.database_dir)/dataset_config.phase/'detection/dets_trk_confidence'
+        result_trk_folder.mkdir(parents=True, exist_ok=True)
+
+
     # initialization
     Dataset = Kitti_dataset(dataset_config)
-    mot_tracker = Sort_3d(config=tracker_config, data_association=filter_config.data_association, fusion_confidence=fusion_confidence)
+    mot_tracker = Sort_3d(config=tracker_config, data_association=filter_config.data_association,
+                          fusion_confidence=fusion_confidence, result_trk_folder=result_trk_folder)
 
     # figure initialization
     if display: fig,ax1,ax2, cmap = fig_initialization()
@@ -1253,14 +1260,18 @@ def __pointcloud_tracking__fusion__(config,
         # prediction step
         # data associations
         # updating step
-        trackers, num_classification_run = mot_tracker.update_range_fusion(dets, cur_robot_pose)
+        trackers, num_classification_run = mot_tracker.update_range_fusion(dets, cur_robot_pose, i)
+
+        #if np.any(dets[:,0]==2.):
+        #    import pudb
+        #    pudb.set_trace()
 
         check_nan = np.argwhere(np.isnan(dets))
         if check_nan.size!=0:
             import pudb; pudb.set_trace()
         # save PDFs of detectiors which are updated with that of trackers.
         if save_det_results:
-            # print('save_results in #{} tracker'.format(i))
+            # print('save_results in #{} detectors'.format(i))
             result_folder = Path(dataset_config.database_dir)/dataset_config.phase/'detection/dets_trk'
             result_folder.mkdir(parents=True, exist_ok=True)
             result_file_path = str(Dataset.det_gt_list[i]).replace('/dets_gt','/dets_trk')
@@ -1296,23 +1307,26 @@ def __pointcloud_tracking__fusion__(config,
 
             with open(result_file_path, 'w') as f:
                 for t_idx in range(len(mot_tracker.trackers)):
-                    cc = np.int(mot_tracker.trackers[t_idx].category)
-                    if cc >= label_to_num.unknow_object_label:
-                        cc = cc - label_to_num.unknow_object_label
-                    trk_type = class_type[cc]
-                    x = mot_tracker.trackers[t_idx].X[0]
-                    y = mot_tracker.trackers[t_idx].X[1]
-                    z = mot_tracker.trackers[t_idx].z_s
-                    w = mot_tracker.trackers[t_idx].height
-                    l = mot_tracker.trackers[t_idx].length
-                    h = mot_tracker.trackers[t_idx].width
-                    theta = mot_tracker.trackers[t_idx].X[2]
-                    confid_bg = mot_tracker.trackers[t_idx].confid[0]
-                    confid_car= mot_tracker.trackers[t_idx].confid[1]
-                    confid_ped= mot_tracker.trackers[t_idx].confid[2]
-                    confid_cyc= mot_tracker.trackers[t_idx].confid[3]
-                    f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f, \n'%(trk_type,
-                                 x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_cyc))
+                    # only save the new trackers or ones that were updated last
+                    # time
+                    if mot_tracker.trackers[t_idx].time_since_update == 0:
+                        cc = np.int(mot_tracker.trackers[t_idx].category)
+                        if cc >= label_to_num.unknow_object_label:
+                            cc = cc - label_to_num.unknow_object_label
+                        trk_type = class_type[cc]
+                        x = mot_tracker.trackers[t_idx].X[0]
+                        y = mot_tracker.trackers[t_idx].X[1]
+                        z = mot_tracker.trackers[t_idx].z_s
+                        w = mot_tracker.trackers[t_idx].height
+                        l = mot_tracker.trackers[t_idx].length
+                        h = mot_tracker.trackers[t_idx].width
+                        theta = mot_tracker.trackers[t_idx].X[2]
+                        confid_bg = mot_tracker.trackers[t_idx].confid[0]
+                        confid_car= mot_tracker.trackers[t_idx].confid[1]
+                        confid_ped= mot_tracker.trackers[t_idx].confid[2]
+                        confid_cyc= mot_tracker.trackers[t_idx].confid[3]
+                        f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f, \n'%(trk_type,
+                                     x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_cyc))
 
         # plotting all objects
         if display_trajectory:
@@ -1471,15 +1485,14 @@ def __pointcloud_tracking__fusion__(config,
     print("Efficient detectors with tracking:{}".format(num_hybrid_detection))
     print("Ratio:{}".format(num_hybrid_detection/num_full_detection))
 
-
 def pointcloud_tracking_within_one_range_with_fusion_multiple(config_path=None,
                                                               output_dir =None,
                                                               display  = False,
                                                               display_trajectory = False,
-                                                              save_trk_results = False,
-                                                              save_det_results = True,
+                                                              save_trk_results = True,
+                                                              save_det_results = False,
                                                               phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
-                                                                        '2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync']):
+                                                                        '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']):
     """
     Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
     detection method, and segment+pointNet classification is used as high-level detection method,
@@ -1500,9 +1513,8 @@ def pointcloud_tracking_within_one_range_with_fusion_multiple(config_path=None,
     for phase in phases:
         print("Phase name: {}".format(phase))
         config.dataset.phase = phase
-        __pointcloud_tracking__fusion__(config)
-
-
+        __pointcloud_tracking__fusion__(config, display=display, display_trajectory=display_trajectory,
+                                        save_trk_results=save_trk_results, save_det_results=save_det_results)
 
 def pointcloud_tracking_within_one_range_with_fusion_bk(config_path=None,
                                                      output_dir =None,
@@ -1758,8 +1770,6 @@ def pointcloud_tracking_within_one_range_with_fusion_bk(config_path=None,
     print("Full detectors:{}".format(num_full_detection))
     print("Efficient detectors with tracking:{}".format(num_hybrid_detection))
     print("Ratio:{}".format(num_hybrid_detection/num_full_detection))
-
-
 
 
 
