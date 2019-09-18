@@ -10,5 +10,4 @@ When downloading the new sequence of vedio.
 After generating all the detection results, the tracking visualizaton function should be launched to check all the detectio results are correct.
 
 The evaluation procedures
-
-
+1. run eval.py with run_det_trk_results function;
