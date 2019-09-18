@@ -9,3 +9,6 @@ When downloading the new sequence of vedio.
 
 After generating all the detection results, the tracking visualizaton function should be launched to check all the detectio results are correct.
 
+The evaluation procedures
+
+
