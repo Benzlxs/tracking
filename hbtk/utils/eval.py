@@ -337,9 +337,167 @@ def run_trk_results():
 
 def run_det_trk_results():
     dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    #phase_name = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+    #              '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
     phase_name = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync']
+    #              '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+
     mAPs = evaluate_dataset_trk_det(dataset_dir, phase_name)
 
+
+
+### running the simulation method
+
+
+def read_the_detection_simulation(path):
+    """
+    select the some detections
+    """
+    dets = []
+    with open(str(path), 'r') as f:
+        lines = f.readlines()
+    _dets_ = [line.strip().split(',') for line in lines]
+    for _det in _dets_:
+        if _det[0] in ['Bg','Car', 'Van', 'Pedestrian', 'Cyclist']:
+            if _det[0] in ['Bg']:
+                _det[0] = 0
+            if _det[0] in ['Car', 'Van'] :
+                _det[0] = 1
+            if _det[0] in ['Pedestrian'] :
+                _det[0] = 2
+            if _det[0] in ['Cyclist'] :
+                _det[0] = 3
+            dets.append(_det)
+    dets = np.array( dets, dtype=np.float32)
+    return dets
+
+
+
+
+def run_det_trk_result_in_simulation():
+    """
+    Evaluation of one dataset in simulation
+    """
+
+    # configuration here
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+                   '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+
+    current_class=['Car','Pedestrian','Cyclist']
+    ROC_plot = True
+    PRC_plot = True
+
+    dataset_dir = Path(dataset_dir)
+    if not isinstance(phase_names, list):
+        phase_names = [phase_names]
+
+    trk_annos = []
+    for phase_name in phase_names:
+        trk_dir = dataset_dir/phase_name/'tracklets_pc/'
+        trk_annos_list = list(sorted(trk_dir.glob('trk_conf/*.txt')))
+        for i in range(len(trk_annos_list)):
+            trk_annos.append(read_the_detection_simulation(trk_annos_list[i]))
+
+    trk_annos = np.concatenate(trk_annos, axis=0)
+
+    det_annos = []
+    for phase_name in phase_names:
+        det_dir = dataset_dir/phase_name/'tracklets_pc/'
+        det_annos_list = list(sorted(det_dir.glob('dets_conf/*.txt')))
+        for i in range(len(det_annos_list)):
+            det_annos.append(read_the_detection_simulation(det_annos_list[i]))
+    det_annos = np.concatenate(det_annos, axis=0)
+
+    #assert det_annos.shape[0]==trk_annos.shape[0], "The number of det and trk results should be the same!"
+
+    class_to_name = {
+        0:'Bg',
+        1: 'Car',
+        2: 'Pedestrian',
+        3: 'Cyclist',
+    }
+    name_to_class = {v:n for n, v in class_to_name.items()}
+    mAP_to_class = {}
+
+    for class_name in current_class:
+        if class_name == 'Bg':
+            y_gt_det = np.where(det_annos[:,0]==0., 1. , 0. )
+            y_pred_det = det_annos[:,8]
+            y_gt_trk = np.where(trk_annos[:,0]==0., 1. , 0. )
+            y_pred_trk = trk_annos[:,8]
+
+        if class_name == 'Car':
+            y_gt_det = np.where(det_annos[:,0]==1., 1. , 0. )
+            y_pred_det = det_annos[:,2]
+            y_gt_trk = np.where(trk_annos[:,0]==1., 1. , 0. )
+            y_pred_trk = trk_annos[:,2]
+
+        if class_name == 'Pedestrian':
+            y_gt_det = np.where(det_annos[:,0]==2., 1. , 0. )
+            y_pred_det = det_annos[:,3]
+            y_gt_trk = np.where(trk_annos[:,0]==2., 1. , 0. )
+            y_pred_trk = trk_annos[:,3]
+
+        if class_name == 'Cyclist':
+            y_gt_det = np.where(det_annos[:,0]==3., 1. , 0. )
+            y_pred_det = det_annos[:,4]
+            y_gt_trk = np.where(trk_annos[:,0]==3., 1. , 0. )
+            y_pred_trk = trk_annos[:,4]
+
+
+        mAP_det = average_precision_score(y_gt_det, y_pred_det)
+        mAP_to_class[class_name] = mAP_det
+
+        mAP_trk = average_precision_score(y_gt_trk, y_pred_trk)
+        mAP_to_class[class_name] = mAP_trk
+
+
+        precision_det, recall_det, thresholds_det = precision_recall_curve(y_gt_det, y_pred_det)
+        fpr_det, tpr_det, _ = metrics.roc_curve(y_gt_det, y_pred_det)
+
+        precision_trk, recall_trk, thresholds_trk = precision_recall_curve(y_gt_trk, y_pred_trk)
+        fpr_trk, tpr_trk, _ = metrics.roc_curve(y_gt_trk, y_pred_trk)
+
+        if ROC_plot:
+            fig, ax = plt.subplots()
+            plt.plot(fpr_det, tpr_det, linestyle='dashed', linewidth=4, label='det_only')
+            plt.plot(fpr_trk, tpr_trk, linestyle='dashed', linewidth=4, label='with_trk')
+
+            ax.legend()
+            plt.xlabel('Speciality')
+            plt.ylabel('Sensitivity')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            #plt.title('Roc curve of {}: AP={}%'.format(class_name ,int(mAP*100)))
+            plt.title("ROC")
+            # plt.show()
+            plt.savefig("Roc_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+
+
+        if PRC_plot:
+            # fig, ax = plt.subplots()
+            plt.figure()
+            # plt.plot(recall, precision)
+            plt.plot(recall_det, precision_det,linestyle='dashed', linewidth=4, label='det_only')
+            plt.plot(recall_trk, precision_trk,linestyle='dashed', linewidth=4, label='with_trk')
+
+            plt.legend()
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            #plt.title('PRC curve of {}: AP={}%'.format(class_name ,int(100*mAP)))
+            plt.title("PRC")
+            # plt.show()
+            plt.savefig("PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+
+
+
+
+
+
+## the phases analysis
 
 def _confidence_analysis_one_phase(dataset_dir, phase_name):
     """
@@ -408,7 +566,6 @@ def _confidence_analysis_one_phase(dataset_dir, phase_name):
     # print(one_det)
     print('average tracking No:{}'.format(num_tracking_all/_count_))
     return num_good_match, num_mis_match, good_instance, bad_instance
-
 
 
 def confidence_analysis_tracking_detection():

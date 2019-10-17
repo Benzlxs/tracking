@@ -78,7 +78,7 @@ class ExtendKalmanBoxTracker_3D(object):
   This class represents the internel state of individual tracked objects observed as bbox.
   """
   count = 0
-  def __init__(self, det, frame_id):
+  def __init__(self, det, frame_id=0):
     """
     Initialises a tracker using initial bounding box.
     Det: [class, x, y, z, l, w, h, theta]
@@ -200,7 +200,7 @@ class ExtendKalmanBoxTracker_3D(object):
 
     self.history.append([self.X[0], self.X[1], self.X[2]])
 
-  def update_fusion(self, det, label_to_num, frame_id, fusion_confidence=0.98, points_threshold = 15, counts_threshold=9):
+  def update_fusion(self, det, label_to_num, frame_id, fusion_confidence=0.98, points_threshold = 0.4, counts_threshold=28):
     """
     Updates the state vector with observed bbox.
     Adding the function of confidence fusion
@@ -275,7 +275,8 @@ class ExtendKalmanBoxTracker_3D(object):
         if trk_category>=label_to_num.unknow_object_label:
             trk_category -= label_to_num.unknow_object_label
         det_category = det[0]
-        if trk_category == det_category and abs(trk_num_points-det_num_points)>points_threshold:
+        if trk_category == det_category and abs(trk_num_points-det_num_points)> 15 and self.hits >= 1:
+        # if trk_category == det_category and abs(trk_num_points-det_num_points)/float(det_num_points) >points_threshold:
             update_flage = True
         else:
             update_flage = False
@@ -322,6 +323,9 @@ class ExtendKalmanBoxTracker_3D(object):
             det[9] = _fuse_confid[1]
             det[10]= _fuse_confid[2]
             det[11]= _fuse_confid[3]
+            # self.confid = _fuse_confid   #####
+
+
 
     # save the class
     self.tracker_confidence_hist.append(self.confid)

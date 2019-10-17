@@ -94,7 +94,7 @@ def create_reduced_point_cloud(config_path):
     calib_data_velo_2_cam = Dataset.calib_data_velo_2_cam
     calib_data_cam_2_cam = Dataset.calib_data_cam_2_cam
 
-
+    print("there are {} files".format(Dataset.__len__()))
     for i in range(0, Dataset.__len__()):
         points_v = np.fromfile(str(Dataset.pc_list[i]), dtype=np.float32, count=-1).reshape([-1, 4])
         # read the calibration info
@@ -117,6 +117,8 @@ def create_reduced_point_cloud(config_path):
         save_filename = output_folder_dir/str(Dataset.pc_list[i].name)
         with open(str(save_filename), 'w') as f:
             points_v.tofile(f)
+
+    print("Finish!!!!")
 
 def create_negative_samples(tracking_config_path,
                             detection_config_path,):
@@ -625,7 +627,9 @@ def __save_detection_classification_one_phases(tracking_config,
 def save_detection_classification_multi_phases(tracking_config_path,
                                                detection_config_path,
                                                phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
-                                                         '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']):
+                                                         '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
+                                                         '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
+                                                         '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']):
     """
     1 prepare the path for all the file, point, img and calibiration
     2 read the ground truth and add them to dets

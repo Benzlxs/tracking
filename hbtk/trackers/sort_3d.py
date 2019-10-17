@@ -229,7 +229,7 @@ class Sort_3d(object):
                 num_classification_run += 1
 
             # give different label
-            trk = ExtendKalmanBoxTracker_3D( object_dets[i,:], frame_id)
+            trk = ExtendKalmanBoxTracker_3D( object_dets[i,:], frame_id=frame_id)
             trk.state_det = label_to_num.need_more
             #_max_confid = max(trk.confid)
             #if _max_confid < self.fusion_confidence:

@@ -1197,7 +1197,7 @@ def __pointcloud_tracking__fusion__(config,
                                     save_trk_results = False,
                                     save_det_results = True,
                                     save_all_track_det_confidence=True,
-                                    fusion_confidence  = 0.98,
+                                    fusion_confidence  = 0.96,
                                     downsample_num = 400,):
     """
     Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
@@ -1491,8 +1491,11 @@ def pointcloud_tracking_within_one_range_with_fusion_multiple(config_path=None,
                                                               display_trajectory = False,
                                                               save_trk_results = True,
                                                               save_det_results = False,
+                                                              save_all_track_det_confidence=True,
                                                               phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
-                                                                        '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']):
+                                                                        '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
+                                                                        '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
+                                                                        '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync',]):
     """
     Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
     detection method, and segment+pointNet classification is used as high-level detection method,
@@ -1514,7 +1517,8 @@ def pointcloud_tracking_within_one_range_with_fusion_multiple(config_path=None,
         print("Phase name: {}".format(phase))
         config.dataset.phase = phase
         __pointcloud_tracking__fusion__(config, display=display, display_trajectory=display_trajectory,
-                                        save_trk_results=save_trk_results, save_det_results=save_det_results)
+                                        save_trk_results=save_trk_results, save_det_results=save_det_results,
+                                        save_all_track_det_confidence=save_all_track_det_confidence)
 
 def pointcloud_tracking_within_one_range_with_fusion_bk(config_path=None,
                                                      output_dir =None,
