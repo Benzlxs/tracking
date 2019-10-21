@@ -423,9 +423,9 @@ def run_det_trk_result_in_simulation():
     for class_name in current_class:
         if class_name == 'Bg':
             y_gt_det = np.where(det_annos[:,0]==0., 1. , 0. )
-            y_pred_det = det_annos[:,8]
+            y_pred_det = det_annos[:,1]
             y_gt_trk = np.where(trk_annos[:,0]==0., 1. , 0. )
-            y_pred_trk = trk_annos[:,8]
+            y_pred_trk = trk_annos[:,1]
 
         if class_name == 'Car':
             y_gt_det = np.where(det_annos[:,0]==1., 1. , 0. )

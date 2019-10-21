@@ -181,9 +181,6 @@ def _save_detection_tracking_(config_path, dataset_path):
                 confid_cyc = trk_confidence[m][3]
                 f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
 
-
-
-
 def save_detection_tracking_multi_phases(dataset_root='/home/ben/Dataset/KITTI',
                                          ):
 
@@ -198,6 +195,112 @@ def save_detection_tracking_multi_phases(dataset_root='/home/ben/Dataset/KITTI',
         print('Process the dataset {}'.format(phase))
         dataset_path = Path(dataset_root) / phase
         _save_detection_tracking_(config_path, dataset_path)
+
+
+
+def _save_detection_tracking_without_detection(config_path, dataset_path):
+    #
+    tracklet_path = dataset_path / 'tracklets_pc'
+    all_seqs = list(tracklet_path.glob('seq_*'))
+
+    # create the results folder for detection and tracking
+    detection_results = dataset_path / 'tracklets_pc/dets_conf'
+    # detection_results.mkdir(parents=True, exist_ok=True)
+    tracking_results = dataset_path / 'tracklets_pc/trk_conf'
+    tracking_results.mkdir(parents=True, exist_ok=True)
+
+    # processing with classifier to generate the detection and tracking
+    # confidence
+    for one_seq in all_seqs:
+        _name_seq = one_seq.name
+
+        _dets_ = None
+        with open(str(detection_results / (_name_seq+'.txt')), 'r') as f:
+            lines = f.readlines()
+        _dets_ = [line.strip().split(',')[1:] for line in lines] # ignore the first class
+        _dets_ = np.array(_dets_, dtype=np.float32)
+
+        # all sub-point cloud
+        all_frame_ids = []
+        _all_pc = list(sorted(one_seq.glob('*.bin')))
+        for _pc_ in _all_pc:
+            _pc_name = _pc_.name
+            _frame_id = int(_pc_name.split('_')[1][:-4])
+            o_type = _pc_name.split('_')[0]
+            all_frame_ids.append(_frame_id)
+        all_frame_ids = sorted(all_frame_ids)
+        previous_id = None
+        trk_one = None
+        object_types = []
+        trk_confidence = []
+        previous_num_points = 0
+        ratio = 0.1
+        start_frame_count = 5
+        _count_ = 0
+        for one_id in all_frame_ids:
+            # adding the order checking, make sure that sequence order is right
+            _pc_name = _pc_.name
+            # _frame_id = int(_pc_name.split('_')[1][:-4])
+            # o_type = _pc_name.split('_')[0]
+            _frame_id = one_id
+            pc_file_path = one_seq / '{}_{}.bin'.format(o_type, one_id)
+
+
+            if previous_id is None:
+                previous_id = _frame_id
+            else:
+                assert _frame_id > previous_id, 'the order of detected objects are not correct.{}_{}_{}'.format(one_seq, _frame_id, previous_id)
+                previous_id = _frame_id
+
+            points = np.fromfile(str(pc_file_path) ,dtype=np.float32, count=-1).reshape([-1, 4])
+            num_points = points.shape[0]
+
+            det_one = _dets_[_count_, :]
+            _count_ += 1
+
+            object_types.append(o_type)
+
+            if trk_one is None:
+                # first frame
+                trk_one = det_one
+                previous_num_points = num_points
+            else:
+                #if abs(num_points - previous_num_points)/float(previous_num_points) > ratio:
+                if (num_points - previous_num_points)/float(previous_num_points) > ratio and _count_ >= start_frame_count:  # # get more and more points without abs
+                    # fuse the confidence
+                    trk_one = fuse_probability(trk_one, det_one)
+                    previous_num_points = num_points
+
+            if _count_ < start_frame_count:
+                trk_confidence.append(det_one)
+                # from pudb import set_trace; set_trace()
+            else:
+                trk_confidence.append(trk_one)
+
+        _trk_file = tracking_results / '{}.txt'.format(_name_seq)
+        with open(str(_trk_file), 'w') as f:
+            for m in range(len(object_types)):
+                cla = object_types[m]
+                confid_bg  = trk_confidence[m][0]
+                confid_car = trk_confidence[m][1]
+                confid_ped = trk_confidence[m][2]
+                confid_cyc = trk_confidence[m][3]
+                f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
+
+def save_detection_tracking_multi_phases_without_detection(dataset_root='/home/ben/Dataset/KITTI',
+                                         ):
+
+    dataset_root = '/home/ben/Dataset/KITTI/2011_09_26'
+    phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
+              '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
+              '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
+              '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+    config_path = '/home/ben/projects/tracking/hbtk/config/detection.config'
+
+    for phase in phases:
+        print('Process the dataset {}'.format(phase))
+        dataset_path = Path(dataset_root) / phase
+        _save_detection_tracking_without_detection(config_path, dataset_path)
 
 
 
