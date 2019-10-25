@@ -15,6 +15,7 @@ import os
 import sys
 import open3d
 import torch
+import time
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(ROOT_DIR))
@@ -191,10 +192,13 @@ def save_detection_tracking_multi_phases(dataset_root='/home/ben/Dataset/KITTI',
               '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
     config_path = '/home/ben/projects/tracking/hbtk/config/detection.config'
 
+    t_s = time.time()
     for phase in phases:
         print('Process the dataset {}'.format(phase))
         dataset_path = Path(dataset_root) / phase
         _save_detection_tracking_(config_path, dataset_path)
+
+    print("Finish time:{}".format(time.time() - t_s))
 
 
 
@@ -228,14 +232,16 @@ def _save_detection_tracking_without_detection(config_path, dataset_path):
             _frame_id = int(_pc_name.split('_')[1][:-4])
             o_type = _pc_name.split('_')[0]
             all_frame_ids.append(_frame_id)
+        # sorting ids is critical step
         all_frame_ids = sorted(all_frame_ids)
         previous_id = None
         trk_one = None
         object_types = []
         trk_confidence = []
         previous_num_points = 0
-        ratio = 0.1
-        start_frame_count = 5
+        max_num_points = 0
+        ratio = 0.16
+        start_frame_count = 16
         _count_ = 0
         for one_id in all_frame_ids:
             # adding the order checking, make sure that sequence order is right
@@ -260,22 +266,29 @@ def _save_detection_tracking_without_detection(config_path, dataset_path):
 
             object_types.append(o_type)
 
-            if trk_one is None:
-                # first frame
-                trk_one = det_one
-                previous_num_points = num_points
-            else:
-                #if abs(num_points - previous_num_points)/float(previous_num_points) > ratio:
-                if (num_points - previous_num_points)/float(previous_num_points) > ratio and _count_ >= start_frame_count:  # # get more and more points without abs
-                    # fuse the confidence
-                    trk_one = fuse_probability(trk_one, det_one)
-                    previous_num_points = num_points
-
             if _count_ < start_frame_count:
                 trk_confidence.append(det_one)
-                # from pudb import set_trace; set_trace()
             else:
+                if trk_one is None:
+                    # first frame
+                    trk_one = det_one
+                    previous_num_points = num_points
+                    max_num_points = num_points
+                else:
+                    #if abs(num_points - previous_num_points)/float(previous_num_points) > ratio:
+                    best_confidence = max(trk_one)
+                    if (num_points - previous_num_points)/float(previous_num_points) > ratio :
+                    # if (num_points - max_num_points)/float(max_num_points) > ratio and _count_ >= start_frame_count:
+                    # if (num_points - previous_num_points)/float(previous_num_points) > ratio and _count_ >= start_frame_count and best_confidence < 0.999:  # # get more and more points without abs
+                        # fuse the confidence
+                        trk_one = fuse_probability(trk_one, det_one)
+                        previous_num_points = num_points
+                        # get the maximum points
+                        if num_points > max_num_points:
+                            max_num_points = num_points
+
                 trk_confidence.append(trk_one)
+                # trk_confidence.append(det_one)
 
         _trk_file = tracking_results / '{}.txt'.format(_name_seq)
         with open(str(_trk_file), 'w') as f:
@@ -286,6 +299,7 @@ def _save_detection_tracking_without_detection(config_path, dataset_path):
                 confid_ped = trk_confidence[m][2]
                 confid_cyc = trk_confidence[m][3]
                 f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
+
 
 def save_detection_tracking_multi_phases_without_detection(dataset_root='/home/ben/Dataset/KITTI',
                                          ):

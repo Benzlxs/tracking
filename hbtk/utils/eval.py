@@ -121,7 +121,6 @@ def evaluate_dataset_det(dataset_dir,
 
     return mAP_to_class
 
-
 def evaluate_dataset_trk_det(dataset_dir,
                              phase_names,
                              current_class=['Bg','Car','Pedestrian','Cyclist'],
@@ -242,7 +241,6 @@ def evaluate_dataset_trk_det(dataset_dir,
 
     return mAP_to_class
 
-
 def evaluate_dataset_trk(dataset_dir,
                      phase_names,
                      current_class=['Bg','Car','Pedestrian','Cyclist'],
@@ -328,12 +326,10 @@ def run_det_results():
     phase_name = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync']
     mAPs = evaluate_dataset_det(dataset_dir, phase_name)
 
-
 def run_trk_results():
     dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
     phase_name = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync']
     mAPs = evaluate_dataset_trk(dataset_dir, phase_name)
-
 
 def run_det_trk_results():
     dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
@@ -344,11 +340,7 @@ def run_det_trk_results():
 
     mAPs = evaluate_dataset_trk_det(dataset_dir, phase_name)
 
-
-
 ### running the simulation method
-
-
 def read_the_detection_simulation(path):
     """
     select the some detections
@@ -370,9 +362,6 @@ def read_the_detection_simulation(path):
             dets.append(_det)
     dets = np.array( dets, dtype=np.float32)
     return dets
-
-
-
 
 def run_det_trk_result_in_simulation():
     """
@@ -472,7 +461,7 @@ def run_det_trk_result_in_simulation():
             #plt.title('Roc curve of {}: AP={}%'.format(class_name ,int(mAP*100)))
             plt.title("ROC")
             # plt.show()
-            plt.savefig("Roc_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+            plt.savefig("tmp/Roc_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
 
 
         if PRC_plot:
@@ -490,15 +479,70 @@ def run_det_trk_result_in_simulation():
             #plt.title('PRC curve of {}: AP={}%'.format(class_name ,int(100*mAP)))
             plt.title("PRC")
             # plt.show()
-            plt.savefig("PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+            plt.savefig("tmp/PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
 
+## Obtain the average number of tracking frames
+def read_num_frame_per_tracklet(path, car_num, cyc_num, ped_num):
+    """
+    select the some detections
+    """
+    dets = []
+    with open(str(path), 'r') as f:
+        lines = f.readlines()
+    _dets_ = [line.strip().split(',') for line in lines]
+    if _dets_[0][0] in ['Car', 'Van'] :
+        car_num.append(len(_dets_))
+    if _dets_[0][0] in ['Pedestrian'] :
+        ped_num.append(len(_dets_))
+    if _dets_[0][0] in ['Cyclist'] :
+        cyc_num.append(len(_dets_))
 
+def obtain_number_tracking_frame():
+    """
+    Evaluation of one dataset in simulation
+    """
 
+    # configuration here
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+                   '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
 
+    current_class=['Car','Pedestrian','Cyclist']
+
+    car_num = []
+    cyc_num = []
+    ped_num = []
+
+    dataset_dir = Path(dataset_dir)
+    if not isinstance(phase_names, list):
+        phase_names = [phase_names]
+
+    det_annos = []
+    for phase_name in phase_names:
+        det_dir = dataset_dir/phase_name/'tracklets_pc/'
+        det_annos_list = list(sorted(det_dir.glob('dets_conf/*.txt')))
+        for i in range(len(det_annos_list)):
+            read_num_frame_per_tracklet(det_annos_list[i],  car_num, cyc_num, ped_num)
+
+    # car_num.remove(min(car_num))
+    # car_num.remove(max(car_num))
+    car_num = sorted(car_num)
+    print("Car: the number of sequence:{}, the number of tracking frames:{}".format(len(car_num) , np.mean(car_num[2:-2])))
+
+    # ped_num.remove(min(ped_num))
+    # ped_num.remove(max(ped_num))
+    ped_num = sorted(ped_num)
+    print("Pedestrian: the number of sequence:{}, the number of tracking frames:{}".format(len(ped_num) , np.mean(ped_num[2:-2])))
+    # print(np.mean(ped_num[2:-2]))
+
+    # cyc_num.remove(min(cyc_num))
+    # cyc_num.remove(max(cyc_num))
+    cyc_num = sorted(cyc_num)
+    # print(np.mean(cyc_num[2:-2]))
+    print("Cyclist: the number of sequence:{}, the number of tracking frames:{}".format(len(cyc_num) , np.mean(cyc_num[2:-2])))
 
 
 ## the phases analysis
-
 def _confidence_analysis_one_phase(dataset_dir, phase_name):
     """
     Description of method:
@@ -567,7 +611,6 @@ def _confidence_analysis_one_phase(dataset_dir, phase_name):
     print('average tracking No:{}'.format(num_tracking_all/_count_))
     return num_good_match, num_mis_match, good_instance, bad_instance
 
-
 def confidence_analysis_tracking_detection():
     """
     For a tracklet, the detection and tracker confidence can be found, and should be compared to check whether the tracker helps the
@@ -583,11 +626,131 @@ def confidence_analysis_tracking_detection():
     """
 
     dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
-    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']
+    # phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+                   '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+
 
     for phase_name in phase_names:
         num_good_match, num_mis_match, good_instance, bad_instance =  _confidence_analysis_one_phase(dataset_dir, phase_name)
         print("num_good_match:{}, num_mis_match:{}, good_instance:{}, bad_instance:{}".format(num_good_match, num_mis_match, good_instance, bad_instance))
+
+
+## the efficiency analysis
+def efficiency_analysis_all_phases():
+    """
+    1. read all data;
+    1. the efficiency ratio against different range
+    """
+    all_dists = [10*i for i in range(1,8)]
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    # phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync',
+                   '2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0059_sync','2011_09_26_drive_0084_sync']
+
+    fig, ax = plt.subplots()
+    for phase_name in phase_names:
+        ratios = []
+        tracklet_path = Path(dataset_dir) / phase_name / 'tracklets_pc'
+        all_seqs = list(tracklet_path.glob('seq_*'))
+
+        for dist in all_dists:
+            # inialization
+            num_det = 0
+            num_trk = 0
+            # for one distance and all sequence data
+            for one_seq in all_seqs:
+                _all_pc = list(sorted(one_seq.glob('*.bin')))
+                #pre_num_det = num_det
+                num_det += len(_all_pc)
+                # go through all the point cloud in one sequence
+                for _pc_ in _all_pc:
+                    points = np.fromfile(str(_pc_) ,dtype=np.float32, count=-1).reshape([-1, 4])
+                    p_range = np.sqrt(np.mean(points[:,0])**2 + np.mean(points[:,1])**2)
+                    if p_range < dist:
+                        #num_det += 1
+                        num_trk += 1
+                        break
+
+                # if num_det > pre_num_det:
+                #    num_trk += 1
+            ratios.append(float(num_trk)/float(num_det))
+        plt.plot(all_dists, ratios, marker='o', linestyle='dashed', markersize=12, linewidth=2, label='{}'.format(phase_name[17:21]))
+
+    plt.xlabel('Range of interest (m)')
+    plt.ylabel('Ratio')
+    # plt.ylim(0, 0.04)
+    plt.xlim(0, 90)
+    ax.legend()
+    fig_name = 'efficiency_results.png'
+    plt.savefig(fig_name)
+
+
+def efficiency_analysis_all_phases_with_fusion_model():
+    """
+    1. read all data;
+    1. the efficiency ratio against different range
+    """
+    all_dists = [10*i for i in range(1,8)]
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    # phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync',
+                   '2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0059_sync','2011_09_26_drive_0084_sync']
+
+    fig, ax = plt.subplots()
+    confusion_ratio = 0.16
+    for phase_name in phase_names:
+        ratios = []
+        tracklet_path = Path(dataset_dir) / phase_name / 'tracklets_pc'
+        all_seqs = list(tracklet_path.glob('seq_*'))
+
+        for dist in all_dists:
+            # inialization
+            num_det = 0
+            num_trk = 0
+            # for one distance and all sequence data
+            for one_seq in all_seqs:
+                all_frame_ids = []
+                _all_pc = list(sorted(one_seq.glob('*.bin')))
+                for _pc_ in _all_pc:
+                    _pc_name = _pc_.name
+                    _frame_id = int(_pc_name.split('_')[1][:-4])
+                    o_type = _pc_name.split('_')[0]
+                    all_frame_ids.append(_frame_id)
+                # sortting the ids is very critical step
+                all_frame_ids = sorted(all_frame_ids)
+                #pre_num_det = num_det
+                num_det += len(_all_pc)
+                # go through all the point cloud in one sequence
+                previous_num_points = None
+
+                for one_id in all_frame_ids:
+                    pc_file_path = one_seq / '{}_{}.bin'.format(o_type, one_id)
+                    points = np.fromfile(str(pc_file_path) ,dtype=np.float32, count=-1).reshape([-1, 4])
+                    num_points = points.shape[0]
+                    p_range = np.sqrt(np.mean(points[:,0])**2 + np.mean(points[:,1])**2)
+                    if p_range < dist:
+                        #num_det += 1
+                        if previous_num_points is None:
+                            previous_num_points = num_points
+                            num_trk += 1
+                        if (num_points - previous_num_points)/float(previous_num_points) > confusion_ratio :
+                            num_trk += 1
+                            previous_num_points = num_points
+
+                # if num_det > pre_num_det:
+                #    num_trk += 1
+            ratios.append(float(num_trk)/float(num_det))
+        plt.plot(all_dists, ratios, marker='o', linestyle='dashed', markersize=12, linewidth=2, label='{}'.format(phase_name[17:21]))
+
+    plt.xlabel('Range of interest (m)')
+    plt.ylabel('Ratio')
+    # plt.ylim(0, 0.04)
+    plt.xlim(0, 90)
+    ax.legend()
+    fig_name = 'efficiency_with_fusion_results.png'
+    plt.savefig(fig_name)
+
 
 
 
