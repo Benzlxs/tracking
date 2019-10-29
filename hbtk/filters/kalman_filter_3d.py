@@ -105,6 +105,7 @@ class ExtendKalmanBoxTracker_3D(object):
     ExtendKalmanBoxTracker_3D.count += 1
     self.color = [np.random.rand(), np.random.rand(), np.random.rand()]
     self.history = []
+    self.tracklet_det = []
     self.hits = 0
     self.hit_streak = 0
     self.age = 0
@@ -116,6 +117,7 @@ class ExtendKalmanBoxTracker_3D(object):
     self.heading  = det[7]
     if len(det) == 13:
         self.num_points = det[12]
+        self.tracklet_det.append(det)
     else:
         self.num_points = None
 
@@ -196,7 +198,9 @@ class ExtendKalmanBoxTracker_3D(object):
             self.confid = [det[8], det[9], det[10], det[11]]
             #              [ Background, Car, Pedestrain, Cyclist ]
 
-
+        # self.num_points = det[12]
+    if self.num_points is not None:
+        self.tracklet_det.append(det)
 
     self.history.append([self.X[0], self.X[1], self.X[2]])
 

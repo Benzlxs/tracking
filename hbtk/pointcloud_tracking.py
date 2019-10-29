@@ -8,7 +8,7 @@ import collections
 from pathlib import Path
 import fire
 import time
-import shutil
+#import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -833,6 +833,105 @@ def pointcloud_tracking_classification(config_path=None,
 
     # leave the plotting there
     wait = input("PRESS ENTER TO CLOSE.")
+
+
+def __pointcloud_tracking_classification_tracklets__(config, save_directory):
+    """ main function for tracking
+
+    we run different detectors and combine them together to improve efficiency
+    without decreasing perfromance too much. Detection-->Tracking
+
+    Args:
+        config_path:
+        output_dir:
+
+    Returns:
+        sss
+
+    Raises:
+        IOError: An error occurred accesssing hte bigtable. Table of object
+
+    """
+    # read configuration file
+    detector_config = config.detector
+    filter_config = config.filter
+    tracker_config = config.tracker
+    dataset_config = config.dataset
+
+    # initialization
+    Dataset = Kitti_dataset(dataset_config)
+    mot_tracker = Sort_3d(config=tracker_config, data_association=filter_config.data_association)
+
+    # read calibration data
+    calib_data_velo_2_cam = Dataset.calib_data_velo_2_cam
+    calib_data_cam_2_cam = Dataset.calib_data_cam_2_cam
+    robot_poses = []
+    global_maps = None
+    for i in range(0, Dataset.__len__()):
+        # robot positions
+        dets = Dataset.get_detection_class(i)
+        local_points = np.zeros((4, len(dets)+1), dtype=np.float32)
+        local_points[3,:] = 1
+        dets = np.array(dets, dtype=np.float32)
+        local_points[0,1:] = dets[:,1]
+        local_points[1,1:] = dets[:,2]
+        local_points[2,1:] = dets[:,3]
+        # convert into global for robot
+        global_points = Dataset.pose[i].dot(local_points)
+        cur_robot_pose = [global_points[0,0], global_points[1,0], Dataset.yaw[i]]
+        robot_poses.append(cur_robot_pose)
+        # objects global position
+        dets[:,1] = global_points[0,1:]
+        dets[:,2] = global_points[1,1:]
+        dets[:,3] = global_points[2,1:]
+        dets[:,7] += cur_robot_pose[2] # theta
+
+
+        # prediction step
+        # data associations
+        # updating step
+        trackers = mot_tracker.update(dets, tracklet_save_dir=save_directory)
+
+        print("Frame_id:{}".format(i))
+
+def pointcloud_tracking_classification_with_saving_tracklets(config_path='/home/ben/projects/tracking/hbtk/config/kitti_tracking.config',
+                                                             ):
+    """ main function for tracking
+
+    we run different detectors and combine them together to improve efficiency
+    without decreasing perfromance too much. Detection-->Tracking
+
+    Args:
+        config_path:
+        output_dir:
+
+    Returns:
+        sss
+
+    Raises:
+        IOError: An error occurred accesssing hte bigtable. Table of object
+
+    """
+    # read configuration file
+    config = pipeline_pb2.TrackingPipeline()
+    with open(config_path, "r") as f:
+        protos_str = f.read()
+        text_format.Merge(protos_str, config)
+    phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
+              '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
+              '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
+              '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync',]
+
+    for phase in phases:
+        print("Phase name: {}".format(phase))
+        config.dataset.phase = phase
+        save_directory = Path(config.dataset.database_dir) / phase / 'detection/tracklet_det'
+        # save_directory.rmdir()
+        shutil.rmtree(str(save_directory))
+        save_directory.mkdir(parents=True, exist_ok=True)
+        # os.remove(str(save_directory/'*'))
+        __pointcloud_tracking_classification_tracklets__(config, save_directory)
+
 
 def pointcloud_tracking_within_ranges(config_path=None,
                                       output_dir=None,

@@ -233,8 +233,8 @@ def create_negative_samples(tracking_config_path,
                 with open(file_path, 'w') as f:
                     bg_points.tofile(f)
 
-def save_detection_gt(tracking_config_path,
-                      detection_config_path,):
+def save_detection_gt(tracking_config_path='/home/ben/projects/tracking/hbtk/config/kitti_tracking.config',
+                      detection_config_path='/home/ben/projects/tracking/hbtk/config/detection.config',):
     """
     1 prepare the path for all the file, point, img and calibiration
     2 read the ground truth and add them to dets
@@ -624,8 +624,8 @@ def __save_detection_classification_one_phases(tracking_config,
                                x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_cyc, _num_points))
 
 
-def save_detection_classification_multi_phases(tracking_config_path,
-                                               detection_config_path,
+def save_detection_classification_multi_phases(tracking_config_path='/home/ben/projects/tracking/hbtk/config/kitti_tracking.config',
+                                               detection_config_path='/home/ben/projects/tracking/hbtk/config/detection.config',
                                                phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
                                                          '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
                                                          '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',

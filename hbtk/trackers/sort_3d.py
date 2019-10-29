@@ -5,7 +5,7 @@ from hbtk.filters.kalman_filter_3d import ExtendKalmanBoxTracker_3D
 
 LABEL_NUM = collections.namedtuple('LABEL_NUM',['unknow_object_label', 'need_more', 'good_enough'])
 label_to_num = LABEL_NUM(unknow_object_label=256, need_more=4, good_enough=8)
-
+class_type={0:'Bg', 1:'Car', 2:'Pedestrian', 3:'Cyclist'}
 
 class Sort_3d(object):
     """
@@ -43,7 +43,7 @@ class Sort_3d(object):
 
         self.save_tracker_id = 0
 
-    def update(self, object_dets, reset_confid=True):
+    def update(self, object_dets, reset_confid=True, tracklet_save_dir=None):
         """
         Args:
             object_dets:  a numpy array of detections in the format
@@ -92,7 +92,21 @@ class Sort_3d(object):
             i -= 1
             #remove dead tracklet
             if(trk.time_since_update > self.max_age):
-              self.trackers.pop(i)
+                if tracklet_save_dir is not None:
+                    # save all files
+                    if len(trk.tracklet_det)>1:
+                        save_files_tracklet_dir = tracklet_save_dir / 'seq_{}.txt'.format(self.save_tracker_id)
+                        with open(str(save_files_tracklet_dir), 'w') as f:
+                            for m in range(len(trk.tracklet_det)):
+                                cla = class_type[trk.tracklet_det[m][0]]
+                                confid_bg  = trk.tracklet_det[m][8]
+                                confid_car = trk.tracklet_det[m][9]
+                                confid_ped = trk.tracklet_det[m][10]
+                                confid_cyc = trk.tracklet_det[m][11]
+                                num_points = trk.tracklet_det[m][12]
+                                f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc, num_points))
+                        self.save_tracker_id += 1
+                self.trackers.pop(i)
         if(len(ret)>0):
           return np.concatenate(ret)
         return np.empty((0,5))

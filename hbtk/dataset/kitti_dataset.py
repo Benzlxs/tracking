@@ -119,7 +119,7 @@ class Kitti_dataset(object):
         fetch detection data
         format: class, x, y, z, l, w, h
         """
-        assert frame_id<len(self.det_gt_list),"number of detection is larger than that of point blocks"
+        assert frame_id<len(self.det_classification_list),"number of detection is larger than that of point blocks"
         dets = []
         with open(str(self.det_classification_list[frame_id]), 'r') as f:
             lines = f.readlines()
