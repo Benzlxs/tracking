@@ -43,7 +43,7 @@ class Sort_3d(object):
 
         self.save_tracker_id = 0
 
-    def update(self, object_dets, reset_confid=True, tracklet_save_dir=None):
+    def update(self, object_dets, reset_confid=True, tracklet_save_dir=None, dets_local=None):
         """
         Args:
             object_dets:  a numpy array of detections in the format
@@ -75,11 +75,11 @@ class Sort_3d(object):
         for t,trk in enumerate(self.trackers):
           if(t not in unmatched_trks):
             d = matched[np.where(matched[:,1]==t)[0],0]
-            trk.update(object_dets[d,:][0], reset_confid=reset_confid)
+            trk.update(object_dets[d,:][0], reset_confid=reset_confid, det_in_local=dets_local[d,:][0])
 
         #create and initialise new trackers for unmatched detections
         for i in unmatched_dets:
-            trk = ExtendKalmanBoxTracker_3D( object_dets[i,:])
+            trk = ExtendKalmanBoxTracker_3D( object_dets[i,:], det_in_local=dets_local[i,:])
             self.trackers.append(trk)
         i = len(self.trackers)
         for trk in reversed(self.trackers):
@@ -99,12 +99,14 @@ class Sort_3d(object):
                         with open(str(save_files_tracklet_dir), 'w') as f:
                             for m in range(len(trk.tracklet_det)):
                                 cla = class_type[trk.tracklet_det[m][0]]
+                                x_pos      = trk.tracklet_det[m][1]
+                                y_pos      = trk.tracklet_det[m][2]
                                 confid_bg  = trk.tracklet_det[m][8]
                                 confid_car = trk.tracklet_det[m][9]
                                 confid_ped = trk.tracklet_det[m][10]
                                 confid_cyc = trk.tracklet_det[m][11]
                                 num_points = trk.tracklet_det[m][12]
-                                f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc, num_points))
+                                f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points))
                         self.save_tracker_id += 1
                 self.trackers.pop(i)
         if(len(ret)>0):

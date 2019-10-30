@@ -29,4 +29,5 @@ After generating all the detection results, the tracking visualizaton function s
 1. regenerating the detection results with the model used for similuation using the code `detections_gt_generation.py`;
 2. generating the tracklet with tracker and save them under xxxx_sync/detection/tracklet_det, with function pointcloud_tracking_classification_with_saving_tracklets() in pointcloud_tracking.py;
 3. running tracker to generate tracking results and put them under xxxx_sync/detection/tracklet_trk, with code function fusion_model_with_sort_results in tracker/fusion_model_sort.py;
-4. producing the efficiency and accuracy figures in simulation code;
+4. producing the accuracy comparison with the function run_det_trk_result_with_real_tracker() in eval.py;
+5. producing the efficiency comparison with the function

@@ -78,7 +78,7 @@ class ExtendKalmanBoxTracker_3D(object):
   This class represents the internel state of individual tracked objects observed as bbox.
   """
   count = 0
-  def __init__(self, det, frame_id=0):
+  def __init__(self, det, frame_id=0, det_in_local=None):
     """
     Initialises a tracker using initial bounding box.
     Det: [class, x, y, z, l, w, h, theta]
@@ -117,7 +117,7 @@ class ExtendKalmanBoxTracker_3D(object):
     self.heading  = det[7]
     if len(det) == 13:
         self.num_points = det[12]
-        self.tracklet_det.append(det)
+        self.tracklet_det.append(det_in_local)
     else:
         self.num_points = None
 
@@ -146,7 +146,7 @@ class ExtendKalmanBoxTracker_3D(object):
     # self.save_tracker_id = 0
 
 
-  def update(self, det, reset_confid=True):
+  def update(self, det, reset_confid=True, det_in_local=None):
     """
     Updates the state vector with observed bbox.
     """
@@ -200,7 +200,8 @@ class ExtendKalmanBoxTracker_3D(object):
 
         # self.num_points = det[12]
     if self.num_points is not None:
-        self.tracklet_det.append(det)
+        # self.tracklet_det.append(det)
+        self.tracklet_det.append(det_in_local)
 
     self.history.append([self.X[0], self.X[1], self.X[2]])
 

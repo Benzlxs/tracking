@@ -88,7 +88,9 @@ def __fusion_model_with_sort__(config_path, dataset_path):
             lines = f.readlines()
 
         _names_type = [line.strip().split(',')[0] for line in lines] # ignore the first class
-
+        # format of lines = [type, x, y, bg, car, ped, cyc, num_points]
+        # formate of dets = [x, y, bg, car, ped, cyc, num_points], since we
+        # remove the first term
         _dets_ = [line.strip().split(',')[1:] for line in lines] # ignore the first class
         _dets_ = np.array(_dets_, dtype=np.float32)
 
@@ -104,8 +106,8 @@ def __fusion_model_with_sort__(config_path, dataset_path):
         start_frame_count = 3
         for _ind  in range(_dets_.shape[0]):
             # adding the order checking, make sure that sequence order is right
-
-            det_one = _dets_[_ind, :-1]
+            # format of det_one = [x, y, bg, car, ped, cyc, num_points]
+            det_one = _dets_[_ind, 2:-1]
             num_points = _dets_[_ind, -1]
 
             object_types.append(_names_type[_ind])

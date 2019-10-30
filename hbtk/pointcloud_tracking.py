@@ -375,10 +375,10 @@ def pointcloud_tracking_gt(config_path=None,
     # leave the plotting there
     wait = input("PRESS ENTER TO CLOSE.")
 
-def pointcloud_tracking_det(config_path=None,
+def pointcloud_tracking_det(config_path='/home/ben/projects/tracking/hbtk/config/kitti_tracking.config',
                         output_dir='./results',
-                        display = False,
-                        display_trajectory = False,
+                        display = True,
+                        display_trajectory = True,
                         downsample_num = 400,
 
              ):
@@ -508,12 +508,15 @@ def pointcloud_tracking_det(config_path=None,
                     _v_ = mot_tracker.trackers[t_idx].X[3]
                     ax2_1.text(trace[-1,0], trace[-1,1], '{},V:{:.1f}'.format(trk_type, _v_), color=[0,0,0], fontsize=8)
 
-            ax2_1.set_xlim([-20 ,200])
-            ax2_1.set_ylim([-200,50])
+            #ax2_1.set_xlim([-20 ,200]) # for dataset 0084
+            #ax2_1.set_ylim([-200,50])  # for dataset 0084
+            ax2_1.set_xlim([0 , 250])
+            ax2_1.set_ylim([-85,85])
+
 
             fig2.canvas.draw()
             name_img = 'global_img/%06d.png'% i
-            plt.savefig((output_folder_dir/name_img))
+            fig2.savefig((output_folder_dir/name_img), dpi='figure', quality=95)
             # time.sleep(0.1)
             fig2.canvas.flush_events()
 
@@ -574,7 +577,7 @@ def pointcloud_tracking_det(config_path=None,
                     _box = patches.Rectangle((bb[0], bb[1]), bb[2], bb[3], fill=False, lw=lw[det[0]], ec=colours[det[0]])
                     ax1.add_patch(_box)
 
-            ax1.set_title('image')
+            ax1.set_title('Image')
             ax1.set_xticks([])
             ax1.set_yticks([])
 
@@ -592,12 +595,12 @@ def pointcloud_tracking_det(config_path=None,
                     # _box = patches.Rectangle((bb[0], bb[1]), bb[2]-bb[0], bb[3]-bb[1], angle= -np.float(det[7]), fill=False, lw=lw[det[0]], ec=colours[det[0]])
                     _box = patches.Rectangle((bb[0], bb[1]), bb[2]-bb[0], bb[3]-bb[1], fill=False, lw=lw[det[0]], ec=colours[det[0]], transform=t2)
                     ax2.add_patch(_box)
-            ax2.set_title('point cloud')
+            ax2.set_title('Point cloud')
             ax2.set_xticks([])
             ax2.set_yticks([])
             fig.canvas.draw()
             name_img = 'bv_img/%06d.png'% i
-            plt.savefig((output_folder_dir/name_img))
+            fig.savefig((output_folder_dir/name_img),dpi='figure', quality=95)
             #time.sleep(0.1)
             fig.canvas.flush_events()
 
@@ -873,6 +876,9 @@ def __pointcloud_tracking_classification_tracklets__(config, save_directory):
         local_points = np.zeros((4, len(dets)+1), dtype=np.float32)
         local_points[3,:] = 1
         dets = np.array(dets, dtype=np.float32)
+        # copy the array to save the detection results in local coordinate
+        dets_local_coordinate = dets.copy()
+
         local_points[0,1:] = dets[:,1]
         local_points[1,1:] = dets[:,2]
         local_points[2,1:] = dets[:,3]
@@ -890,7 +896,7 @@ def __pointcloud_tracking_classification_tracklets__(config, save_directory):
         # prediction step
         # data associations
         # updating step
-        trackers = mot_tracker.update(dets, tracklet_save_dir=save_directory)
+        trackers = mot_tracker.update(dets, tracklet_save_dir=save_directory, dets_local=dets_local_coordinate)
 
         print("Frame_id:{}".format(i))
 
