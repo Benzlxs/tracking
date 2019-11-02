@@ -22,7 +22,10 @@ def _save_one_sequence_(xml_path, sequence_path, mini_tracking_count = 3):
     """
     tracklets = xmlParser.parseXML(xml_path)
     print('There are {} trackers'.format(len(tracklets)))
-
+    num_car = 0
+    num_ped = 0
+    num_cyc = 0
+    num_point_cloud = 0
     for i, tracklet in enumerate(tracklets):
         h, w, l = tracklet.size
 
@@ -51,14 +54,24 @@ def _save_one_sequence_(xml_path, sequence_path, mini_tracking_count = 3):
 
             object_points = points[indices[:,0],:]
             if object_points.shape[0]==0:
+                print('Ignore one')
                 continue
 
+            if o_type in ['Car']:
+                num_car += 1
+            if o_type in ['Cyclist']:
+                num_cyc += 1
+            if o_type in ['Pedestrian']:
+                num_ped += 1
             # save the point cloud with name_format = type_framenumber
             _one_pc_file = one_seq_folder / '{}_{}.bin'.format(o_type, absoluteFrameNumber)
-
+            num_point_cloud += 1
             with open(str(_one_pc_file), 'w') as f:
                 object_points.tofile(f)
-
+    print("The number of point cloud: {}".format(num_point_cloud))
+    print("The number of car: {}".format(num_car))
+    print("The number of cyclist: {}".format(num_cyc))
+    print("The number of pedestrian: {}".format(num_ped))
     print('Finish...')
 
 

@@ -523,9 +523,12 @@ def __save_detection_classification_one_phases(tracking_config,
     clusters_filter = ClustersFiltering(config.clustersfilter)
     classifier      = Classification_Pointnet(config.clustertodetection)
 
+    num_car = 0
+    num_ped = 0
+    num_cyc = 0
     # ********* inialization *************
     for i in range(0, Dataset.__len__()):
-        print("Block No.{}".format(i))
+        #print("Block No.{}".format(i))
         object_types = []
         xyz_lwhr_confid = []
         object_points_clusters = []
@@ -535,9 +538,11 @@ def __save_detection_classification_one_phases(tracking_config,
         dets = np.array(dets, dtype=np.float32)
         # read cropped points
         points = np.fromfile(str(Dataset.reduce_pc_list[i]),dtype=np.float32, count=-1).reshape([-1, 4])
+        # ***************************************************
+        # generate the ground truth bounding boxes
         for j in range(0, dets.shape[0]):
             # xyzlwh = dets[j][1:]
-            large_ratio = 1.2
+            large_ratio = 1.2 # 1.2
             xyzlwhr_lidar = np.array([[dets[j][1], dets[j][2], dets[j][3]+0.1, dets[j][4]*large_ratio, dets[j][5]*large_ratio, dets[j][6]*1.5, -dets[j][7]]])
             # indices  = points_inside_box(points, xyzlwhr, axis=2, origin=(0.5,0.5,0))
             # get points within the 3D bounding boxes, xyzlwhr_lidar
@@ -546,6 +551,7 @@ def __save_detection_classification_one_phases(tracking_config,
             object_points_clusters.append(object_points)
             _num_points = object_points.shape[0]
             if object_points.shape[0]==0:
+                print("one empty")
                 continue
             # read the class label
             j_type = int(dets[j][0])
@@ -570,6 +576,23 @@ def __save_detection_classification_one_phases(tracking_config,
             confidence = classifier.classification(object_points)
             # heading = dets[j][7]
             xyz_lwhr_confid.append([ _x_c, _y_c, _z_min, wl[1], wl[0], dets[j][6], heading] + confidence+[_num_points])
+            # remove the objectness points
+            # points = points[~indices[:,0],:]
+        num_car += object_types.count('Car')
+        num_ped += object_types.count('Pedestrian')
+        num_cyc += object_types.count('Cyclist')
+        # **************************************
+        # removing the object points
+        for j in range(0, dets.shape[0]):
+            # xyzlwh = dets[j][1:]
+            large_ratio = 1.2 # 1.2
+            xyzlwhr_lidar = np.array([[dets[j][1], dets[j][2], dets[j][3]+0.1, dets[j][4]*large_ratio, dets[j][5]*large_ratio, dets[j][6]*1.5, -dets[j][7]]])
+            # indices  = points_inside_box(points, xyzlwhr, axis=2, origin=(0.5,0.5,0))
+            # get points within the 3D bounding boxes, xyzlwhr_lidar
+            indices = box_np_ops.points_in_rbbox(points, xyzlwhr_lidar, z_axis=2, origin=(0.5,0.5,0))
+            obddject_points = points[indices[:,0],:]
+            if object_points.shape[0]==0:
+                continue
             # remove the objectness points
             points = points[~indices[:,0],:]
 
@@ -623,13 +646,18 @@ def __save_detection_classification_one_phases(tracking_config,
                 f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f,%d\n'%(ty,
                                x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_cyc, _num_points))
 
+    print("The number of car: {}".format(num_car))
+    print("The number of pedestrian: {}".format(num_ped))
+    print("The number of cyclist: {}".format(num_cyc))
+
 
 def save_detection_classification_multi_phases(tracking_config_path='/home/ben/projects/tracking/hbtk/config/kitti_tracking.config',
                                                detection_config_path='/home/ben/projects/tracking/hbtk/config/detection.config',
                                                phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
-                                                         '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
-                                                         '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
-                                                         '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']):
+                                                        '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
+                                                        '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
+                                                        '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']):
+                                               # phases = ['2011_09_26_drive_0001_sync']):
     """
     1 prepare the path for all the file, point, img and calibiration
     2 read the ground truth and add them to dets

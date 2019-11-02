@@ -67,7 +67,9 @@ def load_tracklets_for_frames(n_frames, xml_path):
     frame_lwh = {}
     frame_theta = {}
 
-
+    num_car = 0
+    num_ped = 0
+    num_cyc = 0
     for i in range(n_frames):
         frame_tracklets[i] = []
         frame_tracklets_types[i] = []
@@ -88,8 +90,8 @@ def load_tracklets_for_frames(n_frames, xml_path):
         # loop over all data in tracklet
         for translation, rotation, state, occlusion, truncation, amtOcclusion, amtBorders, absoluteFrameNumber in tracklet:
             # determine if object is in the image; otherwise continue
-            if truncation not in (xmlParser.TRUNC_IN_IMAGE, xmlParser.TRUNC_TRUNCATED):
-                continue
+            # if truncation not in (xmlParser.TRUNC_IN_IMAGE, xmlParser.TRUNC_TRUNCATED):
+            #    continue
             # re-create 3D bounding box in velodyne coordinate system
             yaw = rotation[2]  # other rotations are supposedly 0
             assert np.abs(rotation[:2]).sum() == 0, 'object rotations other than yaw given!'
@@ -106,13 +108,23 @@ def load_tracklets_for_frames(n_frames, xml_path):
             frame_lwh[absoluteFrameNumber] = frame_lwh[absoluteFrameNumber] + [[l, w, h]]
             frame_theta[absoluteFrameNumber] = frame_theta[absoluteFrameNumber] + [[yaw]]
 
+            if tracklet.objectType in ['Car']:
+                num_car += 1
+            if tracklet.objectType in ['Cyclist']:
+                num_cyc += 1
+            if tracklet.objectType in ['Pedestrian']:
+                num_ped += 1
+    print("The number of car: {}".format(num_car))
+    print("The number of cyc: {}".format(num_cyc))
+    print("The number of ped: {}".format(num_ped))
+
     return (frame_tracklets, frame_tracklets_types, frame_xyz, frame_lwh, frame_theta)
 
 
 # save all ground truth detection
 def save_dets(dataset_root='/home/ben/Dataset/KITTI',
               date='2011_09_26',
-              drive='0019'):
+              drive='0001'):
     # read all detections
     dataset = load_dataset(dataset_root, date, drive)
     tracklet_rects, tracklet_types, frame_xyz, frame_lwh, frame_theta = load_tracklets_for_frames(len(list(dataset.velo)),
