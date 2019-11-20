@@ -873,6 +873,9 @@ def __pointcloud_tracking_classification_tracklets__(config, save_directory):
     for i in range(0, Dataset.__len__()):
         # robot positions
         dets = Dataset.get_detection_class(i)
+        # read the car, pedestrain, cyclist only.
+        if len(dets) == 0:
+            continue
         local_points = np.zeros((4, len(dets)+1), dtype=np.float32)
         local_points[3,:] = 1
         dets = np.array(dets, dtype=np.float32)
@@ -892,13 +895,15 @@ def __pointcloud_tracking_classification_tracklets__(config, save_directory):
         dets[:,3] = global_points[2,1:]
         dets[:,7] += cur_robot_pose[2] # theta
 
-
         # prediction step
         # data associations
         # updating step
         trackers = mot_tracker.update(dets, tracklet_save_dir=save_directory, dets_local=dets_local_coordinate)
-
+        # save the rest of tracking
         print("Frame_id:{}".format(i))
+
+    mot_tracker.save_all_trk(save_directory)
+
 
 def pointcloud_tracking_classification_with_saving_tracklets(config_path='/home/ben/projects/tracking/hbtk/config/kitti_tracking.config',
                                                              ):

@@ -88,11 +88,12 @@ class ExtendKalmanBoxTracker_3D(object):
     self.X = np.array([det[1], det[2], det[7], 0])
     npm = 1 # uncertainity of initial position
     self.P =  np.array([[npm,0,0,0], [0,npm,0,0], [0,0,100*npm,0], [0,0,0,100*npm] ])
-    npm = 0.05 # noise for process model
-    self.Q = np.array([[npm,0,0,0], [0,npm,0,0], [0,0,npm,0], [0,0,0,npm] ])
+    npm = 0.05 # 0.05 # noise for process model
+    self.Q = np.array([[npm,0,0,0], [0,npm,0,0], [0,0,npm,0], [0,0,0, npm] ])
 
-    nom = 0.05 # uncertainy for observation model
-    self.R = np.array([[ nom, 0, 0], [ 0, nom, 0], [ 0, 0, 50*nom]])
+    nom = 0.05 # 0.05 # uncertainy for observation model
+    self.R = np.array([[ nom, 0, 0], [ 0, nom, 0], [ 0, 0, 10000*nom]])
+    # do not trust heading, so the factor the heading is very small
 
     # observation matrix, H matrix
     self.H = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0]])
@@ -115,7 +116,7 @@ class ExtendKalmanBoxTracker_3D(object):
     self.width    = det[5]
     self.height   = det[6]
     self.heading  = det[7]
-    if len(det) == 13:
+    if len(det) >= 13:
         self.num_points = det[12]
         self.tracklet_det.append(det_in_local)
     else:

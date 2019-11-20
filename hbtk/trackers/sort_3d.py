@@ -106,13 +106,13 @@ class Sort_3d(object):
                                 confid_ped = trk.tracklet_det[m][10]
                                 confid_cyc = trk.tracklet_det[m][11]
                                 num_points = trk.tracklet_det[m][12]
-                                f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points))
+                                track_id   = trk.tracklet_det[m][13]
+                                f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id))
                         self.save_tracker_id += 1
                 self.trackers.pop(i)
         if(len(ret)>0):
           return np.concatenate(ret)
         return np.empty((0,5))
-
 
     def update_range(self, object_dets, robot_loc, reset_confid=True):
         """
@@ -184,7 +184,6 @@ class Sort_3d(object):
         if(len(ret)>0):
           return np.concatenate(ret), num_classification_run
         return np.empty((0,5)), num_classification_run
-
 
     def update_range_fusion(self, object_dets, robot_loc, frame_id, reset_confid=True, save_tracking_results=True):
         """
@@ -299,3 +298,37 @@ class Sort_3d(object):
         if(len(ret)>0):
           return np.concatenate(ret), num_classification_run
         return np.empty((0,5)), num_classification_run
+
+    def save_all_trk(self, tracklet_save_dir):
+        """
+        Args:
+            object_dets:  a numpy array of detections in the format
+            [class, x, y, z, l, w, h, theta]
+
+        Returns:
+            a similar array, where the last column is the object ID.
+
+        Raises:
+
+        """
+        i = len(self.trackers)
+        for trk in reversed(self.trackers):
+            i -= 1
+            # save all files
+            if len(trk.tracklet_det)>1:
+                save_files_tracklet_dir = tracklet_save_dir / 'seq_{}.txt'.format(self.save_tracker_id)
+                with open(str(save_files_tracklet_dir), 'w') as f:
+                    for m in range(len(trk.tracklet_det)):
+                        cla = class_type[trk.tracklet_det[m][0]]
+                        x_pos      = trk.tracklet_det[m][1]
+                        y_pos      = trk.tracklet_det[m][2]
+                        confid_bg  = trk.tracklet_det[m][8]
+                        confid_car = trk.tracklet_det[m][9]
+                        confid_ped = trk.tracklet_det[m][10]
+                        confid_cyc = trk.tracklet_det[m][11]
+                        num_points = trk.tracklet_det[m][12]
+                        track_id   = trk.tracklet_det[m][13]
+                        f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id))
+                self.save_tracker_id += 1
+
+

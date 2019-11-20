@@ -61,7 +61,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
 
 
-def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 1.1): #0.9 max_speed = 1.2*10*3.6 ~ 40Km/h
+def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 2.0): #0.9 max_speed = 1.2*10*3.6 ~ 40Km/h
   """
   Assigns detections to tracked object (both represented as bounding boxes)
   Args:

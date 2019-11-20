@@ -31,6 +31,9 @@ from hbtk.detectors.pointnet.model import PointNetCls, feature_transform_regular
 from hbtk.detectors.efficient_det.classificaiton_pointnet import Classification_Pointnet
 from hbtk.utils.visualization_pc import *
 
+very_very_small_number = sys.float_info.min
+bg_id = int(100000.)
+
 
 def read_detection_file(one_file):
     if isinstance(one, str):
@@ -68,7 +71,7 @@ def fuse_probability(trk_c, det_c):
     return fuse_confid
 
 
-def __fusion_model_with_sort__(config_path, dataset_path):
+def __fusion_model_with_sort__bk(config_path, dataset_path):
     # fetch all tracklets created by sort_3d
     tracklet_path = dataset_path / 'detection/tracklet_det'
     all_seqs = list(tracklet_path.glob('seq_*.txt'))
@@ -145,6 +148,104 @@ def __fusion_model_with_sort__(config_path, dataset_path):
                 confid_ped = trk_confidence[m][2]
                 confid_cyc = trk_confidence[m][3]
                 f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
+
+
+def __fusion_model_with_sort__(config_path, dataset_path):
+    # fetch all tracklets created by sort_3d
+    tracklet_path = dataset_path / 'detection/tracklet_det'
+    all_seqs = list(tracklet_path.glob('seq_*.txt'))
+
+    # make the directory to save the results of fusion model
+    tracking_results = dataset_path / 'detection/tracklet_trk'
+    shutil.rmtree(str(tracking_results))
+    tracking_results.mkdir(parents=True, exist_ok=True)
+
+    # processing with classifier to generate the detection and tracking
+    # confidence
+    all_track_ids  = []
+    num_mis_match  = 0
+    num_break_match = 0
+    for one_seq in all_seqs:
+        _name_seq = one_seq.name
+        _dets_ = None
+        with open(str(one_seq), 'r') as f:
+            lines = f.readlines()
+
+        _names_type = [line.strip().split(',')[0] for line in lines] # ignore the first class
+        # format of lines = [type, x, y, bg, car, ped, cyc, num_points]
+        # formate of dets = [x, y, bg, car, ped, cyc, num_points], since we
+        # remove the first term
+        _dets_ = [line.strip().split(',')[1:] for line in lines] # ignore the first class
+        _dets_ = np.array(_dets_, dtype=np.float32)
+
+        # all sub-point cloud
+        # all_frame_ids = []
+
+        trk_one = None
+        object_types = []
+        trk_confidence = []
+        previous_num_points = 0
+        max_num_points = 0
+        ratio = 0.10
+        start_frame_count = 3
+        track_id = []
+        for _ind  in range(_dets_.shape[0]):
+            # adding the order checking, make sure that sequence order is right
+            # format of det_one = [x, y, bg, car, ped, cyc, num_points]
+            det_one = _dets_[_ind, 2:-2]
+            num_points = _dets_[_ind, -2]
+            track_id.append(int(_dets_[_ind, -1]))
+
+            object_types.append(_names_type[_ind])
+            if _ind < start_frame_count:
+                trk_confidence.append(det_one)
+            else:
+                if trk_one is None:
+                    # first frame
+                    trk_one = det_one
+                    previous_num_points = num_points
+                    max_num_points = num_points
+                else:
+                    #if abs(num_points - previous_num_points)/float(previous_num_points) > ratio:
+                    best_confidence = max(trk_one)
+                    if (num_points - previous_num_points)/float(previous_num_points) > ratio :
+                    # if (num_points - max_num_points)/float(max_num_points) > ratio and _count_ >= start_frame_count:
+                    # if (num_points - previous_num_points)/float(previous_num_points) > ratio and _count_ >= start_frame_count and best_confidence < 0.999:  # # get more and more points without abs
+                        # fuse the confidence
+                        trk_one = fuse_probability(trk_one, det_one)
+                        previous_num_points = num_points
+                        # get the maximum points
+                        if num_points > max_num_points:
+                            max_num_points = num_points
+
+                trk_confidence.append(trk_one)
+                # trk_confidence.append(det_one)
+        # check whehter track_id is consistent or not
+        if track_id == [track_id[0]]*len(track_id):
+            # check whether the id is in the list or not
+            # if (track_id[0] not in all_track_ids) and (track_id[0] != bg_id):
+            if (track_id[0] not in all_track_ids):
+                all_track_ids.append(track_id[0])
+            else:
+                if(track_id[0] != bg_id):
+                    num_break_match += 1
+        else:
+            num_mis_match += 1
+            print(track_id)
+
+        _trk_file = tracking_results / '{}.txt'.format(_name_seq)
+        with open(str(_trk_file), 'w') as f:
+            for m in range(len(object_types)):
+                cla = object_types[m]
+                confid_bg  = trk_confidence[m][0]
+                confid_car = trk_confidence[m][1]
+                confid_ped = trk_confidence[m][2]
+                confid_cyc = trk_confidence[m][3]
+                f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
+
+    print("The number of break match:{}".format(num_break_match))
+    print("The number of mis match:{}".format(num_mis_match))
+
 
 
 def fusion_model_with_sort_results(dataset_root='/home/ben/Dataset/KITTI',
