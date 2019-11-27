@@ -1886,6 +1886,232 @@ def pointcloud_tracking_within_one_range_with_fusion_bk(config_path=None,
     print("Ratio:{}".format(num_hybrid_detection/num_full_detection))
 
 
+### function testing and tuning for tracking
+def __pointcloud_tracking__fusion_tracker_shaking_test__(config,
+                                    display  = False,
+                                    display_trajectory = False,
+                                    save_trk_results = False,
+                                    save_det_results = True,
+                                    save_all_track_det_confidence=True,
+                                    fusion_confidence  = 0.96,
+                                    downsample_num = 400,):
+    """
+    Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
+    detection method, and segment+pointNet classification is used as high-level detection method,
+    Pipeline: current frame ----> segmentation ---> data association ----> unmathced proposals
+           ----> classification model ----> next frame
+    """
+
+    detector_config = config.detector
+    filter_config = config.filter
+    tracker_config = config.tracker
+    dataset_config = config.dataset
+
+    # save the history of confidence change with respect to detector and
+    # trackers.
+    if save_all_track_det_confidence:
+        result_trk_folder = Path(dataset_config.database_dir)/dataset_config.phase/'detection/dets_trk_confidence'
+        result_trk_folder.mkdir(parents=True, exist_ok=True)
+
+
+    # initializatioN
+    Dataset = Kitti_dataset(dataset_config)
+    mot_tracker = Sort_3d(config=tracker_config, data_association=filter_config.data_association,
+                          fusion_confidence=fusion_confidence, result_trk_folder=result_trk_folder)
+
+    # figure initialization
+    if display: fig,ax1,ax2, cmap = fig_initialization()
+    if display_trajectory: plt.ion();fig2=plt.figure(num=2, figsize=(12,11));ax2_1=fig2.add_subplot(1,1,1);
+
+
+    # read calibration data
+    calib_data_velo_2_cam = Dataset.calib_data_velo_2_cam
+    calib_data_cam_2_cam = Dataset.calib_data_cam_2_cam
+    robot_poses = []
+    global_maps = None
+
+    ## plotting position with detector............
+    fig, ax = plt.subplots()
+    all_tracking_ids = []
+    distance_streams = {}
+    frame_streams = {}
+    # tracking
+    num_full_detection  = 0
+    num_hybrid_detection  = 0
+    for i in range(0, Dataset.__len__()):
+        # robot positions
+        dets = Dataset.get_detection_class(i)
+        if len(dets)==0:
+            continue
+        local_points = np.zeros((4, len(dets)+1), dtype=np.float32)
+        local_points[3,:] = 1
+        dets = np.array(dets, dtype=np.float32)
+        # local_points[:,0] is position for robot
+        local_points[0,1:] = dets[:,1]
+        local_points[1,1:] = dets[:,2]
+        local_points[2,1:] = dets[:,3]
+        # convert into global for robot
+        global_points = Dataset.pose[i].dot(local_points)
+        cur_robot_pose = [global_points[0,0], global_points[1,0], Dataset.yaw[i]]
+        robot_poses.append(cur_robot_pose)
+        # objects global position
+        dets[:,1] = global_points[0,1:]
+        dets[:,2] = global_points[1,1:]
+        dets[:,3] = global_points[2,1:]
+        dets[:,7] += cur_robot_pose[2] # theta
+
+        x_pos       = global_points[0,1:]
+        y_pos       = global_points[1,1:]
+        p_range = np.sqrt(y_pos**2 + x_pos**2)
+        tracking_id = dets[:,13]
+
+        for j in range(tracking_id.shape[0]):
+            _id_ = int(tracking_id[j])
+            if _id_ not in all_tracking_ids:
+                all_tracking_ids.append(_id_)
+                distance_streams[_id_] = [p_range[j]]
+                frame_streams[_id_] = [i]
+            else:
+                distance_streams[_id_].append(p_range[j])
+                frame_streams[_id_].append(i)
+    for i in all_tracking_ids:
+        plt.plot(frame_streams[i], distance_streams[i])
+
+    plt.xlabel('Number of frames')
+    plt.ylabel('distance detector')
+    fig_name = 'utils/shaking/{}_detector.png'.format(config.dataset.phase)
+    plt.savefig(fig_name)
+
+
+    # plotting the details with tracking ....................
+    fig, ax = plt.subplots()
+    all_tracking_ids = []
+    distance_streams = {}
+    frame_streams = {}
+    velocity_streams = {}
+    # tracking
+    num_full_detection  = 0
+    num_hybrid_detection  = 0
+    for i in range(0, len(Dataset.det_tracklet_det_list)):
+        # robot positions
+        start_frame_id = int(Dataset.det_tracklet_det_list[i].name.split('_')[1].split('.')[0])
+        dets = Dataset.get_detection_tracklet_det(i)
+        if len(dets)==0:
+            continue
+
+        dets = np.array(dets, dtype=np.float32)
+        # local_points[:,0] is position for robot
+        tracking_id = dets[:,8]
+        velocities = dets[:,11]
+
+        frame_streams[i] = [start_frame_id]
+
+        velocity_streams[i] = [velocities[0]]
+        p_range = np.sqrt(dets[0,9]**2 + dets[0,10]**2)
+        distance_streams[i] = [p_range]
+
+        for j in range(1, tracking_id.shape[0]):
+            # _id_ = int(tracking_id[j])
+            frame_streams[i].append( start_frame_id-j )
+
+            velocity_streams[i].append(velocities[j])
+            p_range = np.sqrt(dets[j,9]**2 + dets[j,10]**2)
+            distance_streams[i].append(p_range)
+            # if _id_ not in all_tracking_ids:
+            #     all_tracking_ids.append(_id_)
+            #     # distance_streams[_id_] = [p_range[j]]
+            #     frame_streams[_id_] = [start_frame_id]
+            #     velocity_streams[_id_] = [velocities[j]]
+
+            #     local_points = np.zeros((4, 1), dtype=np.float32)
+            #     local_points[0,0] = dets[j,9]
+            #     local_points[1,0] = dets[j,10]
+            #     local_points[2,0] = -1.63
+            #     local_points[3,0] = 1
+            #     #if frame_streams[_id_][-1]>=len(Dataset.pose):
+            #     #    global_points = Dataset.pose[-1].dot(local_points)
+            #     #else:
+            #     #    global_points = Dataset.pose[frame_streams[_id_][-1]].dot(local_points)
+            #     # p_range = np.sqrt(global_points[0,0]**2 + global_points[1,0]**2)
+            #     p_range = np.sqrt(local_points[0,0]**2 + local_points[1,0]**2)
+            #     distance_streams[_id_] = [p_range]
+
+            # else:
+            #     # distance_streams[_id_].append(p_range[j])
+            #     frame_streams[_id_].append( frame_streams[_id_][-1]-1)
+            #     velocity_streams[_id_].append(velocities[j])
+            #     # calculate the pose
+
+            #     local_points = np.zeros((4, 1), dtype=np.float32)
+            #     local_points[0,0] = dets[j,9]
+            #     local_points[1,0] = dets[j,10]
+            #     local_points[2,0] = -1.63
+            #     local_points[3,0] = 1
+            #     # if frame_streams[_id_][-1]>=len(Dataset.pose):
+            #     #     global_points = Dataset.pose[-1].dot(local_points)
+            #     # else:
+            #     #     global_points = Dataset.pose[frame_streams[_id_][-1]].dot(local_points)
+            #     # p_range = np.sqrt(global_points[0,0]**2 + global_points[1,0]**2)
+            #     p_range = np.sqrt(local_points[0,0]**2 + local_points[1,0]**2)
+            #     distance_streams[_id_].append(p_range)
+
+    # for i in all_tracking_ids:
+    #     plt.plot(frame_streams[i].reverse(), distance_streams[i])
+    for i in range(len(distance_streams)):
+        plt.plot(frame_streams[i][::-1], distance_streams[i])
+
+    plt.xlabel('Number of frames')
+    plt.ylabel('distance estimation')
+    fig_name = 'utils/shaking/{}_position_estimation.png'.format(config.dataset.phase)
+    plt.savefig(fig_name)
+
+
+    # plotting the details with tracking ....................
+    fig, ax = plt.subplots()
+    for i in range(len(distance_streams)):# all_tracking_ids:
+        plt.plot(frame_streams[i][::-1], velocity_streams[i])
+
+    plt.xlabel('Number of frames')
+    plt.ylabel('Velocity')
+    fig_name = 'utils/shaking/{}_velocity.png'.format(config.dataset.phase)
+    plt.savefig(fig_name)
+
+
+def pointcloud_tracking_within_one_range_with_fusion_multiple_shaking_testing(config_path='/home/ben/projects/tracking/hbtk/config/kitti_tracking.config',
+                                                              output_dir =None,
+                                                              display  = False,
+                                                              display_trajectory = False,
+                                                              save_trk_results = True,
+                                                              save_det_results = False,
+                                                              save_all_track_det_confidence=True,
+                                                              phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
+                                                                        '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
+                                                                        '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
+                                                                        '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync',]):
+    """
+    Object tracking with hybrid detection method, 3D oject segmentation is used as low-level
+    detection method, and segment+pointNet classification is used as high-level detection method,
+    Pipeline: current frame ----> segmentation ---> data association ----> unmathced proposals
+           ----> classification model ----> next frame
+    """
+    # read configuration file
+    config = pipeline_pb2.TrackingPipeline()
+    if output_dir is not None:
+        output_folder_dir = Path(output_dir)
+        output_folder_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(config_path, "r") as f:
+        protos_str = f.read()
+        text_format.Merge(protos_str, config)
+
+    for phase in phases:
+        print("Phase name: {}".format(phase))
+        config.dataset.phase = phase
+        __pointcloud_tracking__fusion_tracker_shaking_test__(config, display=display, display_trajectory=display_trajectory,
+                                                             save_trk_results=save_trk_results, save_det_results=save_det_results,
+                                                             save_all_track_det_confidence=save_all_track_det_confidence)
+
+
 
 if __name__=='__main__':
     fire.Fire()
