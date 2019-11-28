@@ -87,12 +87,16 @@ class ExtendKalmanBoxTracker_3D(object):
     #define constant velocity model
     self.X = np.array([det[1], det[2], det[7], 0])
     npm = 1 # uncertainity of initial position
-    self.P =  np.array([[npm,0,0,0], [0,npm,0,0], [0,0,100*npm,0], [0,0,0,100*npm] ])
-    npm = 0.05 # 0.05 # noise for process model
-    self.Q = np.array([[npm,0,0,0], [0,npm,0,0], [0,0,npm,0], [0,0,0, npm] ])
+    self.P =  np.array([[npm**2,0,0,0], [0,npm**2,0,0], [0,0,100*npm**2,0], [0,0,0,100*npm**2] ])
+    npm = 0.2 # 0.05 # noise for process model
+    self.Q =  np.array([[npm**2,0,0,0], [0,npm**2,0,0], [0,0,npm**2,0], [0,0,0, npm**2] ])
 
-    nom = 0.05 # 0.05 # uncertainy for observation model
-    self.R = np.array([[ nom, 0, 0], [ 0, nom, 0], [ 0, 0, 10000*nom]])
+    #self.Q =  np.array([[npm,0,0,0], [0,npm,0,0], [0,0,npm,0], [0,0,0, npm] ])
+
+
+    nom = 0.2 # 0.05 # uncertainy for observation model
+    self.R = np.array([[ nom**2, 0, 0], [ 0, nom**2, 0], [ 0, 0, 10000*nom**2]])
+    # self.R = np.array([[ nom, 0, 0], [ 0, nom, 0], [ 0, 0, 10000*nom]])
     # do not trust heading, so the factor the heading is very small
 
     # observation matrix, H matrix
@@ -135,7 +139,7 @@ class ExtendKalmanBoxTracker_3D(object):
     # the number of counts for certain classification
     num_classes = 4  # make sure that it has the same size with confidence
     self.num_counts = np.zeros((num_classes), dtype=np.int)
-    self.history.append([self.X[0], self.X[1], self.X[2]])
+    self.history.append([self.X[0], self.X[1], self.X[2], self.X[3]])
 
     # the code below is for saving all the detection confidence
     self.frame_ids_hist = [frame_id]
@@ -204,7 +208,7 @@ class ExtendKalmanBoxTracker_3D(object):
         # self.tracklet_det.append(det)
         self.tracklet_det.append(det_in_local)
 
-    self.history.append([self.X[0], self.X[1], self.X[2]])
+    self.history.append([self.X[0], self.X[1], self.X[2], self.X[3]])
 
   def update_fusion(self, det, label_to_num, frame_id, fusion_confidence=0.98, points_threshold = 0.4, counts_threshold=28):
     """
@@ -341,7 +345,7 @@ class ExtendKalmanBoxTracker_3D(object):
     if check_nan.size!=0:
         import pudb; pudb.set_trace()
 
-    self.history.append([self.X[0], self.X[1], self.X[2]])
+    self.history.append([self.X[0], self.X[1], self.X[2],self.X[3]])
 
     return det
 
@@ -365,7 +369,7 @@ class ExtendKalmanBoxTracker_3D(object):
       self.hit_streak = 0
     self.time_since_update += 1
 
-    self.history.append([self.X[0], self.X[1], self.X[2]])
+    # self.history.append([self.X[0], self.X[1], self.X[2], self.X[3]])
 
     return self.X #self.history[-1]
 

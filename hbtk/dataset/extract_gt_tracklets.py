@@ -66,6 +66,7 @@ def load_tracklets_for_frames(n_frames, xml_path):
     frame_xyz = {}
     frame_lwh = {}
     frame_theta = {}
+    frame_track_id = {}
 
     num_car = 0
     num_ped = 0
@@ -76,6 +77,7 @@ def load_tracklets_for_frames(n_frames, xml_path):
         frame_xyz[i] = []
         frame_lwh[i] = []
         frame_theta[i] = []
+        frame_track_id[i] = []
 
     # loop over tracklets
     for i, tracklet in enumerate(tracklets):
@@ -106,7 +108,8 @@ def load_tracklets_for_frames(n_frames, xml_path):
                 tracklet.objectType]
             frame_xyz[absoluteFrameNumber] = frame_xyz[absoluteFrameNumber] + [translation]
             frame_lwh[absoluteFrameNumber] = frame_lwh[absoluteFrameNumber] + [[l, w, h]]
-            frame_theta[absoluteFrameNumber] = frame_theta[absoluteFrameNumber] + [[yaw]]
+            frame_theta[absoluteFrameNumber] = frame_theta[absoluteFrameNumber] + [yaw]
+            frame_track_id[absoluteFrameNumber] = frame_track_id[absoluteFrameNumber] + [i]
 
             if tracklet.objectType in ['Car']:
                 num_car += 1
@@ -118,16 +121,16 @@ def load_tracklets_for_frames(n_frames, xml_path):
     print("The number of cyc: {}".format(num_cyc))
     print("The number of ped: {}".format(num_ped))
 
-    return (frame_tracklets, frame_tracklets_types, frame_xyz, frame_lwh, frame_theta)
+    return (frame_tracklets, frame_tracklets_types, frame_xyz, frame_lwh, frame_theta, frame_track_id)
 
 
 # save all ground truth detection
 def save_dets(dataset_root='/home/ben/Dataset/KITTI',
               date='2011_09_26',
-              drive='0001'):
+              drive='0084'):
     # read all detections
     dataset = load_dataset(dataset_root, date, drive)
-    tracklet_rects, tracklet_types, frame_xyz, frame_lwh, frame_theta = load_tracklets_for_frames(len(list(dataset.velo)),
+    tracklet_rects, tracklet_types, frame_xyz, frame_lwh, frame_theta, frame_track_id = load_tracklets_for_frames(len(list(dataset.velo)),
                                                                '{}/{}/{}_drive_{}_sync/tracklet_labels.xml'.format(dataset_root, date, date, drive))
 
     det_path = Path(dataset_root)/ '{}/{}/{}_drive_{}_sync/detection/gt'.format(dataset_root, date, date, drive)
@@ -155,8 +158,9 @@ def save_dets(dataset_root='/home/ben/Dataset/KITTI',
                 l = frame_lwh[i][k][0]
                 w = frame_lwh[i][k][1]
                 h = frame_lwh[i][k][2]
-                theta = frame_theta[i][k][0]
-                f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n'%(ty, x, y, z, l, w, h, theta))
+                theta = frame_theta[i][k]
+                track_id = frame_track_id[i][k]
+                f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n'%(ty, x, y, z, l, w, h, theta,track_id))
 
 
 if __name__=='__main__':

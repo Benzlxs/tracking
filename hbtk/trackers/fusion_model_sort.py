@@ -192,9 +192,13 @@ def __fusion_model_with_sort__(config_path, dataset_path):
         for _ind  in range(_dets_.shape[0]):
             # adding the order checking, make sure that sequence order is right
             # format of det_one = [x, y, bg, car, ped, cyc, num_points]
-            det_one = _dets_[_ind, 2:-2]
-            num_points = _dets_[_ind, -2]
-            track_id.append(int(_dets_[_ind, -1]))
+            # det_one = _dets_[_ind, 2:-2]
+            # num_points = _dets_[_ind, -2]
+            # track_id.append(int(_dets_[_ind, -1]))
+
+            det_one = _dets_[_ind, 2:6]
+            num_points = _dets_[_ind, 6]
+            track_id.append(int(_dets_[_ind, 7]))
 
             object_types.append(_names_type[_ind])
             if _ind < start_frame_count:
@@ -231,7 +235,7 @@ def __fusion_model_with_sort__(config_path, dataset_path):
                     num_break_match += 1
         else:
             num_mis_match += 1
-            print(track_id)
+            #print(track_id)
 
         _trk_file = tracking_results / '{}.txt'.format(_name_seq)
         with open(str(_trk_file), 'w') as f:
@@ -252,10 +256,15 @@ def fusion_model_with_sort_results(dataset_root='/home/ben/Dataset/KITTI',
                                          ):
 
     dataset_root = '/home/ben/Dataset/KITTI/2011_09_26'
-    phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
-              '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
-              '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
-              '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+    # phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync',
+    #           '2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync',
+    #           '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync',
+    #           '2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+    phases = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0005_sync',
+              '2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync',
+              '2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync',
+              '2011_09_26_drive_0059_sync','2011_09_26_drive_0084_sync']
+
     config_path = '/home/ben/projects/tracking/hbtk/config/detection.config'
 
     for phase in phases:

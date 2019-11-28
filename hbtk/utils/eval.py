@@ -623,7 +623,6 @@ def run_det_trk_result_in_simulation_with_background_objects():
             plt.savefig("tmp/PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
 
 
-
 #####*********************************#######
 ### running experiments with real trackers
 # reading the tracking results in tracklet
@@ -701,156 +700,6 @@ def read_tracklet_bg(path):
 
     dets = np.array( dets, dtype=np.float32)
     return dets
-
-# check the accuracy difference
-def run_det_trk_result_with_real_tracker():
-    """
-    Evaluation of one dataset in simulation
-    """
-    # configuration here
-    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
-    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
-                   '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
-
-    current_class=['Car','Pedestrian','Cyclist']
-    ROC_plot = True
-    PRC_plot = True
-
-    dataset_dir = Path(dataset_dir)
-    if not isinstance(phase_names, list):
-        phase_names = [phase_names]
-
-    bg_annos = []
-    for phase_name in phase_names:
-        bg_dir = dataset_dir/phase_name/'detection/'
-        # det_annos_list = list(sorted(det_dir.glob('tracklet_det/*.txt')))
-        bg_annos_list = list(sorted(bg_dir.glob('dets_class/*.txt')))
-        # det_dir = dataset_dir/phase_name
-        # det_annos_list = list(sorted(det_dir.glob('tracklets_pc/dets_conf/*.txt')))
-        for i in range(len(bg_annos_list)):
-            # det_annos.append(read_tracklet_det(det_annos_list[i]))
-            test_m=read_tracklet_bg(bg_annos_list[i])
-            if test_m.shape[0] > 0:
-                bg_annos.append(read_tracklet_bg(bg_annos_list[i]))
-            #det_annos.append(read_the_detection_simulation(det_annos_list[i]))
-    #bg_annos = np.concatenate(bg_annos, axis=0)
-
-    trk_annos = []
-    num_tracking_streak = 0
-    for phase_name in phase_names:
-        trk_dir = dataset_dir/phase_name/'detection/'
-        trk_annos_list = list(sorted(trk_dir.glob('tracklet_trk/*.txt')))
-        num_tracking_streak += len(trk_annos_list)
-        for i in range(len(trk_annos_list)):
-            test_m = read_tracklet_trk(trk_annos_list[i])
-            if test_m.shape[0] > 0:
-                trk_annos.append(read_tracklet_trk(trk_annos_list[i]))
-    # trk_annos = np.concatenate(trk_annos + bg_annos, axis=0)
-    trk_annos = np.concatenate(trk_annos , axis=0)
-    print('The number of track streak: {}'.format(num_tracking_streak))
-
-    print("The number of tracked objects: {}".format(trk_annos.shape[0]))
-
-
-    det_annos = []
-    for phase_name in phase_names:
-        det_dir = dataset_dir/phase_name/'detection/'
-        det_annos_list = list(sorted(det_dir.glob('tracklet_det/*.txt')))
-        #det_annos_list = list(sorted(det_dir.glob('dets_class/*.txt')))
-        # det_dir = dataset_dir/phase_name
-        # det_annos_list = list(sorted(det_dir.glob('tracklets_pc/dets_conf/*.txt')))
-        for i in range(len(det_annos_list)):
-            # det_annos.append(read_tracklet_det(det_annos_list[i]))
-            test_m=read_tracklet_det(det_annos_list[i])
-            if test_m.shape[0] > 0:
-                det_annos.append(read_tracklet_det(det_annos_list[i]))
-            #det_annos.append(read_the_detection_simulation(det_annos_list[i]))
-    # det_annos = np.concatenate(det_annos + bg_annos, axis=0)
-    det_annos = np.concatenate(det_annos, axis=0)
-    print("The number of detected objects: {}".format(det_annos.shape[0]))
-
-    #assert det_annos.shape[0]==trk_annos.shape[0], "The number of det and trk results should be the same!"
-
-    class_to_name = {
-        0:'Bg',
-        1: 'Car',
-        2: 'Pedestrian',
-        3: 'Cyclist',
-    }
-    name_to_class = {v:n for n, v in class_to_name.items()}
-    mAP_to_class = {}
-
-    for class_name in current_class:
-        if class_name == 'Bg':
-            y_gt_det = np.where(det_annos[:,0]==0., 1. , 0. )
-            y_pred_det = det_annos[:,1]
-            y_gt_trk = np.where(trk_annos[:,0]==0., 1. , 0. )
-            y_pred_trk = trk_annos[:,1]
-
-        if class_name == 'Car':
-            y_gt_det = np.where(det_annos[:,0]==1., 1. , 0. )
-            y_pred_det = det_annos[:,2]
-            y_gt_trk = np.where(trk_annos[:,0]==1., 1. , 0. )
-            y_pred_trk = trk_annos[:,2]
-
-        if class_name == 'Pedestrian':
-            y_gt_det = np.where(det_annos[:,0]==2., 1. , 0. )
-            y_pred_det = det_annos[:,3]
-            y_gt_trk = np.where(trk_annos[:,0]==2., 1. , 0. )
-            y_pred_trk = trk_annos[:,3]
-
-        if class_name == 'Cyclist':
-            y_gt_det = np.where(det_annos[:,0]==3., 1. , 0. )
-            y_pred_det = det_annos[:,4]
-            y_gt_trk = np.where(trk_annos[:,0]==3., 1. , 0. )
-            y_pred_trk = trk_annos[:,4]
-
-
-        mAP_det = average_precision_score(y_gt_det, y_pred_det)
-        mAP_to_class[class_name] = mAP_det
-
-        mAP_trk = average_precision_score(y_gt_trk, y_pred_trk)
-        mAP_to_class[class_name] = mAP_trk
-
-
-        precision_det, recall_det, thresholds_det = precision_recall_curve(y_gt_det, y_pred_det)
-        fpr_det, tpr_det, _ = metrics.roc_curve(y_gt_det, y_pred_det)
-
-        precision_trk, recall_trk, thresholds_trk = precision_recall_curve(y_gt_trk, y_pred_trk)
-        fpr_trk, tpr_trk, _ = metrics.roc_curve(y_gt_trk, y_pred_trk)
-
-        if ROC_plot:
-            fig, ax = plt.subplots()
-            plt.plot(fpr_det, tpr_det, linestyle='dashed', linewidth=4, label='det_only')
-            plt.plot(fpr_trk, tpr_trk, linestyle='dashed', linewidth=4, label='with_trk')
-
-            ax.legend()
-            plt.xlabel('Speciality')
-            plt.ylabel('Sensitivity')
-            plt.ylim([0.0, 1.05])
-            plt.xlim([0.0, 1.0])
-            #plt.title('Roc curve of {}: AP={}%'.format(class_name ,int(mAP*100)))
-            plt.title("ROC")
-            # plt.show()
-            plt.savefig("real_tracker_tmp/Roc_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
-
-
-        if PRC_plot:
-            # fig, ax = plt.subplots()
-            plt.figure()
-            # plt.plot(recall, precision)
-            plt.plot(recall_det, precision_det,linestyle='dashed', linewidth=4, label='det_only')
-            plt.plot(recall_trk, precision_trk,linestyle='dashed', linewidth=4, label='with_trk')
-
-            plt.legend()
-            plt.xlabel('Recall')
-            plt.ylabel('Precision')
-            plt.ylim([0.0, 1.05])
-            plt.xlim([0.0, 1.0])
-            #plt.title('PRC curve of {}: AP={}%'.format(class_name ,int(100*mAP)))
-            plt.title("PRC")
-            # plt.show()
-            plt.savefig("real_tracker_tmp/PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
 
 
 #### *****************########
@@ -986,8 +835,6 @@ def unit_test_realtracker():
             plt.savefig("real_tracker_tmp/PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
 
 
-
-
 ## Obtain the average number of tracking frames
 def read_num_frame_per_tracklet(path, car_num, cyc_num, ped_num):
     """
@@ -1056,8 +903,16 @@ def obtain_number_tracking_frame_for_every_frame():
 
     # configuration here
     dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
-    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
-                   '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+    # phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+    #                '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+
+
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0005_sync',
+              '2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync',
+              '2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync',
+              '2011_09_26_drive_0059_sync','2011_09_26_drive_0084_sync']
+
+
 
     current_class=['Car','Pedestrian','Cyclist']
     dataset_dir = Path(dataset_dir)
@@ -1217,8 +1072,8 @@ def efficiency_analysis_all_phases():
     plt.xlabel('Range of interest (m)')
     plt.ylabel('Ratio')
     # plt.ylim(0, 0.04)
-    plt.xlim(0, 90)
-    ax.legend()
+    plt.xlim(-9, 75)
+    ax.legend(loc=2)
     fig_name = 'efficiency_results.png'
     plt.savefig(fig_name)
 
@@ -1283,9 +1138,341 @@ def efficiency_analysis_all_phases_with_fusion_model():
     plt.xlabel('Range of interest (m)')
     plt.ylabel('Ratio')
     # plt.ylim(0, 0.04)
-    plt.xlim(0, 90)
-    ax.legend()
+    plt.xlim(5, 75)
+    ax.legend(loc=2)
     fig_name = 'efficiency_with_fusion_results.png'
+    plt.savefig(fig_name)
+
+
+#### position shaking testing
+def position_shaking_testing_static_objects():
+    """
+    1. read all data;
+    1. the efficiency ratio against different range
+    """
+    all_dists = [10*i for i in range(1,8)]
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    # phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync',
+                   '2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0059_sync','2011_09_26_drive_0084_sync']
+
+    fig, ax = plt.subplots()
+    for phase_name in phase_names:
+        tracklet_path = Path(dataset_dir) / phase_name / 'tracklets_pc'
+        all_seqs = list(tracklet_path.glob('seq_*'))
+
+        # original_dist = []
+        # for one distance and all sequence data
+        for one_seq in all_seqs:
+            original_dist = []
+            _all_pc = list(sorted(one_seq.glob('*.bin')))
+            for _pc_ in _all_pc:
+                points = np.fromfile(str(_pc_) ,dtype=np.float32, count=-1).reshape([-1, 4])
+                p_range = np.sqrt(np.mean(points[:,0])**2 + np.mean(points[:,1])**2)
+                original_dist.append(p_range)
+
+            plt.plot(range(len(original_dist)), original_dist)
+
+        plt.xlabel('Number of frames')
+        plt.ylabel('distance fluctruation')
+        # plt.ylim(0, 0.04)
+        # plt.xlim(-9, 75)
+        fig_name = 'shaking/{}.png'.format(phase_name)
+        plt.savefig(fig_name)
+
+
+### D. experiments, ####  real detector and tracker
+# check the accuracy difference
+def run_det_trk_result_with_real_tracker():
+    """
+    Evaluation of one dataset in simulation
+    """
+    # configuration here
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+                   '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+
+    current_class=['Car','Pedestrian','Cyclist']
+    ROC_plot = True
+    PRC_plot = True
+
+    dataset_dir = Path(dataset_dir)
+    if not isinstance(phase_names, list):
+        phase_names = [phase_names]
+
+    bg_annos = []
+    for phase_name in phase_names:
+        bg_dir = dataset_dir/phase_name/'detection/'
+        # det_annos_list = list(sorted(det_dir.glob('tracklet_det/*.txt')))
+        bg_annos_list = list(sorted(bg_dir.glob('dets_class/*.txt')))
+        # det_dir = dataset_dir/phase_name
+        # det_annos_list = list(sorted(det_dir.glob('tracklets_pc/dets_conf/*.txt')))
+        for i in range(len(bg_annos_list)):
+            # det_annos.append(read_tracklet_det(det_annos_list[i]))
+            test_m=read_tracklet_bg(bg_annos_list[i])
+            if test_m.shape[0] > 0:
+                bg_annos.append(read_tracklet_bg(bg_annos_list[i]))
+            #det_annos.append(read_the_detection_simulation(det_annos_list[i]))
+    #bg_annos = np.concatenate(bg_annos, axis=0)
+
+    trk_annos = []
+    num_tracking_streak = 0
+    for phase_name in phase_names:
+        trk_dir = dataset_dir/phase_name/'detection/'
+        trk_annos_list = list(sorted(trk_dir.glob('tracklet_trk/*.txt')))
+        num_tracking_streak += len(trk_annos_list)
+        for i in range(len(trk_annos_list)):
+            test_m = read_tracklet_trk(trk_annos_list[i])
+            if test_m.shape[0] > 0:
+                trk_annos.append(read_tracklet_trk(trk_annos_list[i]))
+    # trk_annos = np.concatenate(trk_annos + bg_annos, axis=0)
+    trk_annos = np.concatenate(trk_annos , axis=0)
+    print('The number of track streak: {}'.format(num_tracking_streak))
+
+    print("The number of tracked objects: {}".format(trk_annos.shape[0]))
+
+
+    det_annos = []
+    for phase_name in phase_names:
+        det_dir = dataset_dir/phase_name/'detection/'
+        det_annos_list = list(sorted(det_dir.glob('tracklet_det/*.txt')))
+        #det_annos_list = list(sorted(det_dir.glob('dets_class/*.txt')))
+        # det_dir = dataset_dir/phase_name
+        # det_annos_list = list(sorted(det_dir.glob('tracklets_pc/dets_conf/*.txt')))
+        for i in range(len(det_annos_list)):
+            # det_annos.append(read_tracklet_det(det_annos_list[i]))
+            test_m=read_tracklet_det(det_annos_list[i])
+            if test_m.shape[0] > 0:
+                det_annos.append(read_tracklet_det(det_annos_list[i]))
+            #det_annos.append(read_the_detection_simulation(det_annos_list[i]))
+    # det_annos = np.concatenate(det_annos + bg_annos, axis=0)
+    det_annos = np.concatenate(det_annos, axis=0)
+    print("The number of detected objects: {}".format(det_annos.shape[0]))
+
+    #assert det_annos.shape[0]==trk_annos.shape[0], "The number of det and trk results should be the same!"
+
+    class_to_name = {
+        0:'Bg',
+        1: 'Car',
+        2: 'Pedestrian',
+        3: 'Cyclist',
+    }
+    name_to_class = {v:n for n, v in class_to_name.items()}
+    mAP_to_class = {}
+
+    for class_name in current_class:
+        if class_name == 'Bg':
+            y_gt_det = np.where(det_annos[:,0]==0., 1. , 0. )
+            y_pred_det = det_annos[:,1]
+            y_gt_trk = np.where(trk_annos[:,0]==0., 1. , 0. )
+            y_pred_trk = trk_annos[:,1]
+
+        if class_name == 'Car':
+            y_gt_det = np.where(det_annos[:,0]==1., 1. , 0. )
+            y_pred_det = det_annos[:,2]
+            y_gt_trk = np.where(trk_annos[:,0]==1., 1. , 0. )
+            y_pred_trk = trk_annos[:,2]
+
+        if class_name == 'Pedestrian':
+            y_gt_det = np.where(det_annos[:,0]==2., 1. , 0. )
+            y_pred_det = det_annos[:,3]
+            y_gt_trk = np.where(trk_annos[:,0]==2., 1. , 0. )
+            y_pred_trk = trk_annos[:,3]
+
+        if class_name == 'Cyclist':
+            y_gt_det = np.where(det_annos[:,0]==3., 1. , 0. )
+            y_pred_det = det_annos[:,4]
+            y_gt_trk = np.where(trk_annos[:,0]==3., 1. , 0. )
+            y_pred_trk = trk_annos[:,4]
+
+
+        mAP_det = average_precision_score(y_gt_det, y_pred_det)
+        mAP_to_class[class_name] = mAP_det
+
+        mAP_trk = average_precision_score(y_gt_trk, y_pred_trk)
+        mAP_to_class[class_name] = mAP_trk
+
+
+        precision_det, recall_det, thresholds_det = precision_recall_curve(y_gt_det, y_pred_det)
+        fpr_det, tpr_det, _ = metrics.roc_curve(y_gt_det, y_pred_det)
+
+        precision_trk, recall_trk, thresholds_trk = precision_recall_curve(y_gt_trk, y_pred_trk)
+        fpr_trk, tpr_trk, _ = metrics.roc_curve(y_gt_trk, y_pred_trk)
+
+        if ROC_plot:
+            fig, ax = plt.subplots()
+            plt.plot(fpr_det, tpr_det, linestyle='dashed', linewidth=4, label='det_only')
+            plt.plot(fpr_trk, tpr_trk, linestyle='dashed', linewidth=4, label='with_trk')
+
+            ax.legend()
+            plt.xlabel('Speciality')
+            plt.ylabel('Sensitivity')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            #plt.title('Roc curve of {}: AP={}%'.format(class_name ,int(mAP*100)))
+            plt.title("ROC")
+            # plt.show()
+            plt.savefig("real_tracker_tmp/Roc_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+
+
+        if PRC_plot:
+            # fig, ax = plt.subplots()
+            plt.figure()
+            # plt.plot(recall, precision)
+            plt.plot(recall_det, precision_det,linestyle='dashed', linewidth=4, label='det_only')
+            plt.plot(recall_trk, precision_trk,linestyle='dashed', linewidth=4, label='with_trk')
+
+            plt.legend()
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.ylim([0.0, 1.05])
+            plt.xlim([0.0, 1.0])
+            #plt.title('PRC curve of {}: AP={}%'.format(class_name ,int(100*mAP)))
+            plt.title("PRC")
+            # plt.show()
+            plt.savefig("real_tracker_tmp/PRC_{}_det_{}_trk_{}.png".format(class_name, mAP_det, mAP_trk))
+
+def obtain_number_tracking_frame_real_tracker():
+    """
+    Evaluation of one dataset in simulation
+    """
+    # configuration here
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+                   '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+
+    current_class=['Car','Pedestrian','Cyclist']
+
+    car_num = []
+    cyc_num = []
+    ped_num = []
+
+    dataset_dir = Path(dataset_dir)
+    if not isinstance(phase_names, list):
+        phase_names = [phase_names]
+
+    det_annos = []
+    for phase_name in phase_names:
+        det_dir = dataset_dir/phase_name/'detection/'
+        det_annos_list = list(sorted(det_dir.glob('tracklet_det/*.txt')))
+        for i in range(len(det_annos_list)):
+            read_num_frame_per_tracklet(det_annos_list[i],  car_num, cyc_num, ped_num)
+
+    # car_num.remove(min(car_num))
+    # car_num.remove(max(car_num))
+    car_num = sorted(car_num)
+    print("Car: the number of sequence:{}, the number of tracking frames:{}".format(len(car_num) , np.mean(car_num[2:-2])))
+
+    # ped_num.remove(min(ped_num))
+    # ped_num.remove(max(ped_num))
+    ped_num = sorted(ped_num)
+    print("Pedestrian: the number of sequence:{}, the number of tracking frames:{}".format(len(ped_num) , np.mean(ped_num[2:-2])))
+    # print(np.mean(ped_num[2:-2]))
+
+    # cyc_num.remove(min(cyc_num))
+    # cyc_num.remove(max(cyc_num))
+    cyc_num = sorted(cyc_num)
+    # print(np.mean(cyc_num[2:-2]))
+    print("Cyclist: the number of sequence:{}, the number of tracking frames:{}".format(len(cyc_num) , np.mean(cyc_num[2:-2])))
+
+
+## generating the average number N_go in D. Experiments with real detector and tracker
+def obtain_number_tracking_frame_with_real_tracker():
+    """
+    Evaluation of one dataset in simulation
+    """
+
+    # configuration here
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    # phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0084_sync','2011_09_26_drive_0035_sync',
+    #                '2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync','2011_09_26_drive_0059_sync']
+
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0005_sync',
+                   '2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync',
+                   '2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync',
+                   '2011_09_26_drive_0059_sync','2011_09_26_drive_0084_sync']
+
+    current_class=['Car','Pedestrian','Cyclist']
+    dataset_dir = Path(dataset_dir)
+    if not isinstance(phase_names, list):
+        phase_names = [phase_names]
+
+    det_annos = []
+    for phase_name in phase_names:
+        car_num = []
+        cyc_num = []
+        ped_num = []
+        det_dir = dataset_dir/phase_name/'detection/'
+        det_annos_list = list(sorted(det_dir.glob('tracklet_det/*.txt')))
+        for i in range(len(det_annos_list)):
+            read_num_frame_per_tracklet(det_annos_list[i],  car_num, cyc_num, ped_num)
+        print("The phase:{}, mean track streak len:{}".format(phase_name, np.mean(car_num+cyc_num+ped_num)))
+
+#### generating the figure for D. Experiments with real detector and tracker
+def efficiency_analysis_all_phases_with_fusion_model_with_real_tracker():
+    """
+    1. read all data;
+    1. the efficiency ratio against different range
+    """
+    all_dists = [10*i for i in range(1,8)]
+    dataset_dir = '/home/ben/Dataset/KITTI/2011_09_26'
+    # phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0084_sync']
+    phase_names = ['2011_09_26_drive_0001_sync','2011_09_26_drive_0005_sync','2011_09_26_drive_0014_sync','2011_09_26_drive_0019_sync',
+                   '2011_09_26_drive_0020_sync','2011_09_26_drive_0035_sync','2011_09_26_drive_0059_sync','2011_09_26_drive_0084_sync']
+
+    fig, ax = plt.subplots()
+    confusion_ratio = 0.16
+    for phase_name in phase_names:
+        ratios = []
+        tracklet_path = Path(dataset_dir) / phase_name / 'detection/tracklet_det/'
+        # all_seqs = list(tracklet_path.glob('seq_*'))
+        all_results = list(tracklet_path.glob('seq_*'))
+
+        for dist in all_dists:
+            # inialization
+            num_det = 0
+            num_trk = 0
+            # for one distance and all sequence data
+            for one_result in all_results:
+                # reading one detection result into a list
+                with open(str(one_result), 'r') as f:
+                    lines = f.readlines()
+
+                _dets_ = [line.strip().split(',')[1:] for line in lines] # ignore the first class
+                _dets_ = np.array(_dets_, dtype=np.float32)
+
+
+                num_det += _dets_.shape[0]
+                # go through all the point cloud in one sequence
+                previous_num_points = None
+
+                for one_id in range(_dets_.shape[0]):
+                    # read the detection and get the number point and distance
+                    num_points = _dets_[one_id,6]
+                    x_pos = _dets_[one_id,0]
+                    y_pos = _dets_[one_id,1]
+                    p_range = np.sqrt(x_pos**2 + y_pos**2)
+                    if p_range < dist:
+                        #num_det += 1
+                        if previous_num_points is None:
+                            previous_num_points = num_points
+                            num_trk += 1
+                        if (num_points - previous_num_points)/float(previous_num_points) > confusion_ratio :
+                            num_trk += 1
+                            previous_num_points = num_points
+
+                # if num_det > pre_num_det:
+                #    num_trk += 1
+            ratios.append(float(num_trk)/float(num_det))
+        plt.plot(all_dists, ratios, marker='o', linestyle='dashed', markersize=12, linewidth=2, label='{}'.format(phase_name[17:21]))
+
+    print("plotting")
+    plt.xlabel('Range of interest (m)')
+    plt.ylabel('Ratio')
+    plt.ylim(-0.05, 0.5)
+    plt.xlim(5, 75)
+    ax.legend(loc=2)
+    fig_name = 'efficiency_with_real_tracker.png'
     plt.savefig(fig_name)
 
 

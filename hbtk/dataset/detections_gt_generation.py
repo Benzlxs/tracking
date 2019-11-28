@@ -493,8 +493,9 @@ def save_detection_classification(tracking_config_path,
                                x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_cyc))
 
 
-def __save_detection_classification_one_phases(tracking_config,
-                                                detection_config_path,):
+def __save_detection_classification_one_phases( tracking_config,
+                                                detection_config_path,
+                                                bg_id = 100000. ):
     """
     1 prepare the path for all the file, point, img and calibiration
     2 read the ground truth and add them to dets
@@ -530,7 +531,8 @@ def __save_detection_classification_one_phases(tracking_config,
     for i in range(0, Dataset.__len__()):
         #print("Block No.{}".format(i))
         object_types = []
-        xyz_lwhr_confid = []
+        # xyz_lwhr_confid = []
+        xyz_lwhr_confid_id = []
         object_points_clusters = []
 
         # reading detections
@@ -575,7 +577,8 @@ def __save_detection_classification_one_phases(tracking_config,
             # saving the results
             confidence = classifier.classification(object_points)
             # heading = dets[j][7]
-            xyz_lwhr_confid.append([ _x_c, _y_c, _z_min, wl[1], wl[0], dets[j][6], heading] + confidence+[_num_points])
+            # xyz_lwhr_confid.append([ _x_c, _y_c, _z_min, wl[1], wl[0], dets[j][6], heading] + confidence+[_num_points])
+            xyz_lwhr_confid_id.append([ _x_c, _y_c, _z_min, wl[1], wl[0], dets[j][6], heading] + confidence+[_num_points] + [dets[j][8]])
             # remove the objectness points
             # points = points[~indices[:,0],:]
         num_car += object_types.count('Car')
@@ -619,7 +622,8 @@ def __save_detection_classification_one_phases(tracking_config,
             # confidence = 1.0
             confidence = classifier.classification(bg_points)
             # heading = 0
-            xyz_lwhr_confid.append([ _x_c, _y_c, _z_min, wl[1], wl[0], 1.1*(_z_max - _z_min), heading]+confidence+[_num_points])
+            # xyz_lwhr_confid.append([ _x_c, _y_c, _z_min, wl[1], wl[0], 1.1*(_z_max - _z_min), heading]+confidence+[_num_points])
+            xyz_lwhr_confid_id.append([ _x_c, _y_c, _z_min, wl[1], wl[0], 1.1*(_z_max - _z_min), heading]+confidence+[_num_points]+[bg_id])
             object_types.append('Bg')
 
         # save the segment results
@@ -627,24 +631,24 @@ def __save_detection_classification_one_phases(tracking_config,
         with open(result_file_path, 'w') as f:
             for m in range(len(object_types)):
                 ty = object_types[m]
-                x     = xyz_lwhr_confid[m][0]
-                y     = xyz_lwhr_confid[m][1]
-                z     = xyz_lwhr_confid[m][2]
-                l     = xyz_lwhr_confid[m][3]
-                w     = xyz_lwhr_confid[m][4]
-                h     = xyz_lwhr_confid[m][5]
-                theta = xyz_lwhr_confid[m][6]
-                confid_bg =  xyz_lwhr_confid[m][7]
-                confid_car = xyz_lwhr_confid[m][8]
-                confid_ped = xyz_lwhr_confid[m][9]
-                # confid_van = xyz_lwhr_confid[m][10]
-                confid_cyc = xyz_lwhr_confid[m][10]
-                _num_points = xyz_lwhr_confid[m][11]
-
+                x     = xyz_lwhr_confid_id[m][0]
+                y     = xyz_lwhr_confid_id[m][1]
+                z     = xyz_lwhr_confid_id[m][2]
+                l     = xyz_lwhr_confid_id[m][3]
+                w     = xyz_lwhr_confid_id[m][4]
+                h     = xyz_lwhr_confid_id[m][5]
+                theta = xyz_lwhr_confid_id[m][6]
+                confid_bg =  xyz_lwhr_confid_id[m][7]
+                confid_car = xyz_lwhr_confid_id[m][8]
+                confid_ped = xyz_lwhr_confid_id[m][9]
+                # confid_van = xyz_lwhr_confid_id[m][10]
+                confid_cyc = xyz_lwhr_confid_id[m][10]
+                _num_points = xyz_lwhr_confid_id[m][11]
+                track_id    = xyz_lwhr_confid_id[m][12]
                 # f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f, \n'%(ty,
                 #               x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_van, confid_cyc))
-                f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f,%d\n'%(ty,
-                               x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_cyc, _num_points))
+                f.write('%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f,%d,%.2f\n'%(ty,
+                               x, y, z, l, w, h, theta, confid_bg, confid_car, confid_ped, confid_cyc, _num_points,track_id))
 
     print("The number of car: {}".format(num_car))
     print("The number of pedestrian: {}".format(num_ped))

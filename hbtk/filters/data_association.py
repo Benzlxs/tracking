@@ -61,7 +61,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
 
 
-def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 2.0): #0.9 max_speed = 1.2*10*3.6 ~ 40Km/h
+def associate_detections_to_trackers_distance(detections,trackers,dist_threshold = 4.5): #0.9 max_speed = 1.2*10*3.6 ~ 40Km/h
   """
   Assigns detections to tracked object (both represented as bounding boxes)
   Args:
@@ -73,17 +73,28 @@ def associate_detections_to_trackers_distance(detections,trackers,dist_threshold
     return np.empty((0,2),dtype=int), np.arange(len(detections)), np.empty((0,5),dtype=int)
   iou_matrix = np.zeros((len(detections),len(trackers)),dtype=np.float32)
 
-  _dets = detections[:,[1,2,7]]
+  _dets = detections[:,[1,2,7,4,5,6,12]]
   _trks = np.array(trackers)
 
   _dets = np.expand_dims(_dets, axis=1)
   _trks = np.expand_dims(_trks, axis=0)
 
-  iou_matrix = (_dets[:, :, 0] - _trks[:, :, 0])**2 + (_dets[:, :, 1] - _trks[:, :, 1])**2  + (_dets[:, :, 2] - _trks[:, :, 2])**2
+  # iou_matrix = (_dets[:, :, 0] - _trks[:, :, 0])**2 + (_dets[:, :, 1] - _trks[:, :, 1])**2  + (_dets[:, :, 2] - _trks[:, :, 2])**2
   # cutting off the heading error
-  iou_matrix = (_dets[:, :, 0] - _trks[:, :, 0])**2 + (_dets[:, :, 1] - _trks[:, :, 1])**2 #  + (_dets[:, :, 2] - _trks[:, :, 2])**2
+  # distance difference
+  dist_matrix = (_dets[:, :, 0] - _trks[:, :, 0])**2 + (_dets[:, :, 1] - _trks[:, :, 1])**2 #  + (_dets[:, :, 2] - _trks[:, :, 2])**2
   # iou_matrix += small_number
-  iou_matrix = np.sqrt(iou_matrix)
+  # size difference
+  size_matrix = (_dets[:, :, 3] - _trks[:, :, 4])**2 + (_dets[:, :, 4] - _trks[:, :, 5])**2 + (_dets[:, :, 5] - _trks[:, :, 6])**2
+  # velocity difference
+  numb_matrix = abs(_dets[:, :, 6] - _trks[:, :, 7])
+
+  dist_weight = 2.5   # 2   # 2.5
+  size_weight = 2.5   # 3   # 2.5
+  numb_weight = 0.1  # 0.1 # 0.1
+
+  iou_matrix = dist_weight*np.sqrt(dist_matrix) + size_weight*np.sqrt(size_matrix) + numb_weight*numb_matrix
+
 
   # iou_matrix = np.divide(1., iou_matrix)
   #for d,det in enumerate(detections):

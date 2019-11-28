@@ -57,12 +57,14 @@ class Sort_3d(object):
         """
         self.frame_count += 1
         #get predicted locations from existing trackers.
-        trks = np.zeros((len(self.trackers), 4))
+        trks = np.zeros((len(self.trackers), 8)) # adding w, l, h, numb_points insteading 4 only
         to_del = []
         ret = []
         for t,trk in enumerate(trks):
           pos = self.trackers[t].predict() #[x,y,theta]
-          trk[:] = [pos[0], pos[1], pos[2], pos[3]]
+          # trk[:] = [pos[0], pos[1], pos[2], pos[3]]
+          trk[:] = [pos[0], pos[1], pos[2], pos[3], self.trackers[t].length, self.trackers[t].width, self.trackers[t].height, self.trackers[t].num_points]
+
           if(np.any(np.isnan(pos))):
             to_del.append(t)
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
@@ -107,12 +109,19 @@ class Sort_3d(object):
                                 confid_cyc = trk.tracklet_det[m][11]
                                 num_points = trk.tracklet_det[m][12]
                                 track_id   = trk.tracklet_det[m][13]
-                                f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id))
-                        self.save_tracker_id += 1
+                                x_estmation= trk.history[m][0]
+                                y_estmation= trk.history[m][1]
+                                v_estmation= trk.history[m][3]
+                                # f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id))
+                                f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id,x_estmation, y_estmation, v_estmation))
+                        # self.save_tracker_id += 1
                 self.trackers.pop(i)
+        self.save_tracker_id += 1
+
         if(len(ret)>0):
           return np.concatenate(ret)
         return np.empty((0,5))
+
 
     def update_range(self, object_dets, robot_loc, reset_confid=True):
         """
@@ -328,7 +337,12 @@ class Sort_3d(object):
                         confid_cyc = trk.tracklet_det[m][11]
                         num_points = trk.tracklet_det[m][12]
                         track_id   = trk.tracklet_det[m][13]
-                        f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id))
+                        x_estmation= trk.history[m][0]
+                        y_estmation= trk.history[m][1]
+                        v_estmation= trk.history[m][3]
+                        # f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id))
+                        f.write('%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n'%(cla, x_pos, y_pos, confid_bg, confid_car, confid_ped, confid_cyc, num_points, track_id,x_estmation, y_estmation, v_estmation))
+
                 self.save_tracker_id += 1
 
 

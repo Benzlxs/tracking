@@ -2059,11 +2059,24 @@ def __pointcloud_tracking__fusion_tracker_shaking_test__(config,
     #     plt.plot(frame_streams[i].reverse(), distance_streams[i])
     for i in range(len(distance_streams)):
         plt.plot(frame_streams[i][::-1], distance_streams[i])
-
     plt.xlabel('Number of frames')
     plt.ylabel('distance estimation')
     fig_name = 'utils/shaking/{}_position_estimation.png'.format(config.dataset.phase)
     plt.savefig(fig_name)
+
+
+    # plotting the details with tracking ....................
+    fig, ax = plt.subplots()
+    for i in range(len(distance_streams)):
+        plt.plot(frame_streams[i][::-1], distance_streams[i])
+        # adding the speed
+        plt.plot(frame_streams[i][::-1], distance_streams[i][0]+velocity_streams[i],Color='y')
+
+    plt.xlabel('Number of frames')
+    plt.ylabel('distance estimation')
+    fig_name = 'utils/shaking/{}_position_with_velocity_estimation.png'.format(config.dataset.phase)
+    plt.savefig(fig_name)
+
 
 
     # plotting the details with tracking ....................

@@ -151,7 +151,7 @@ class Kitti_dataset(object):
             lines = f.readlines()
         _dets_ = [line.strip().split(',') for line in lines]
         for _det in _dets_:
-            # if _det[0] in ['Bg','Car', 'Van', 'Pedestrian', 'Cyclist'] :
+            #if _det[0] in ['Bg','Car', 'Van', 'Pedestrian', 'Cyclist'] :
             if _det[0] in ['Car', 'Van', 'Pedestrian', 'Cyclist'] :
                 if _det[0] in ['Bg']:
                     _det[0] = 0

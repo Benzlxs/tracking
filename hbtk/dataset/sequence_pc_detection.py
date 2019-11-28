@@ -77,8 +77,7 @@ def fuse_probability(trk_c, det_c):
     return fuse_confid
 
 
-def _save_detection_tracking_(config_path, dataset_path):
-    #
+def _save_detection_tracking_backup(config_path, dataset_path):
     tracklet_path = dataset_path / 'tracklets_pc'
     all_seqs = list(tracklet_path.glob('seq_*'))
 
@@ -118,7 +117,7 @@ def _save_detection_tracking_(config_path, dataset_path):
         trk_confidence = []
         previous_num_points = 0
         ratio = 0.1
-        start_frame_count = 0
+        start_frame_count = 3
         _count_ = 0
         for one_id in all_frame_ids:
             # adding the order checking, make sure that sequence order is right
@@ -148,14 +147,14 @@ def _save_detection_tracking_(config_path, dataset_path):
                 previous_num_points = num_points
             else:
                 #if abs(num_points - previous_num_points)/float(previous_num_points) > ratio:
-                if (num_points - previous_num_points)/float(previous_num_points) > ratio: #and _count_ >= start_frame_count:  # # get more and more points without abs
+                if (num_points - previous_num_points)/float(previous_num_points) > ratio and _count_ >= start_frame_count:  # # get more and more points without abs
                     # fuse the confidence
                     trk_one = fuse_probability(trk_one, det_one)
                     previous_num_points = num_points
 
             if _count_ < start_frame_count:
                 trk_confidence.append(det_one)
-                from pudb import set_trace; set_trace()
+                # from pudb import set_trace; set_trace()
             else:
                 trk_confidence.append(trk_one)
 
@@ -182,6 +181,117 @@ def _save_detection_tracking_(config_path, dataset_path):
                 confid_cyc = trk_confidence[m][3]
                 f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
 
+
+def _save_detection_tracking_(config_path, dataset_path):
+    tracklet_path = dataset_path / 'tracklets_pc'
+    all_seqs = list(tracklet_path.glob('seq_*'))
+
+    # create the results folder for detection and tracking
+    detection_results = dataset_path / 'tracklets_pc/dets_conf'
+    detection_results.mkdir(parents=True, exist_ok=True)
+    tracking_results = dataset_path / 'tracklets_pc/trk_conf'
+    tracking_results.mkdir(parents=True, exist_ok=True)
+
+    config = pipeline_det_pb2.DetectionPipeline()
+    with open(config_path, "r") as f:
+        protos_str = f.read()
+        text_format.Merge(protos_str, config)
+
+    classifier = Classification_Pointnet(config.clustertodetection)
+
+    # classifier = Classification_Pointnet(config.clustertodetection)
+    # processing with classifier to generate the detection and tracking
+    # confidence
+    for one_seq in all_seqs:
+        _name_seq = one_seq.name
+
+        # all sub-point cloud
+        all_frame_ids = []
+        _all_pc = list(sorted(one_seq.glob('*.bin')))
+        for _pc_ in _all_pc:
+            _pc_name = _pc_.name
+            _frame_id = int(_pc_name.split('_')[1][:-4])
+            o_type = _pc_name.split('_')[0]
+            all_frame_ids.append(_frame_id)
+        all_frame_ids = sorted(all_frame_ids)
+        previous_id = None
+        det_one = None
+        trk_one = None
+        object_types = []
+        det_confidence = []
+        trk_confidence = []
+        previous_num_points = 0
+        ratio = 0.1
+        start_frame_count = 3
+        _count_ = 0
+        for one_id in all_frame_ids:
+            # adding the order checking, make sure that sequence order is right
+            _pc_name = _pc_.name
+            # _frame_id = int(_pc_name.split('_')[1][:-4])
+            # o_type = _pc_name.split('_')[0]
+            _frame_id = one_id
+            pc_file_path = one_seq / '{}_{}.bin'.format(o_type, one_id)
+
+            _count_ += 1
+            if previous_id is None:
+                previous_id = _frame_id
+            else:
+                assert _frame_id > previous_id, 'the order of detected objects are not correct.{}_{}_{}'.format(one_seq, _frame_id, previous_id)
+                previous_id = _frame_id
+
+            points = np.fromfile(str(pc_file_path) ,dtype=np.float32, count=-1).reshape([-1, 4])
+            num_points = points.shape[0]
+            det_one = classifier.classification(points)
+            object_types.append(o_type)
+
+            det_confidence.append(det_one)
+
+            if _count_ < start_frame_count:
+                trk_confidence.append(det_one)
+            else:
+                if trk_one is None:
+                    # first frame
+                    trk_one = det_one
+                    previous_num_points = num_points
+                    max_num_points = num_points
+                else:
+                    #if abs(num_points - previous_num_points)/float(previous_num_points) > ratio:
+                    best_confidence = max(trk_one)
+                    if (num_points - previous_num_points)/float(previous_num_points) > ratio :
+                    # if (num_points - max_num_points)/float(max_num_points) > ratio and _count_ >= start_frame_count:
+                    # if (num_points - previous_num_points)/float(previous_num_points) > ratio and _count_ >= start_frame_count and best_confidence < 0.999:  # # get more and more points without abs
+                        # fuse the confidence
+                        trk_one = fuse_probability(trk_one, det_one)
+                        previous_num_points = num_points
+                        # get the maximum points
+                        if num_points > max_num_points:
+                            max_num_points = num_points
+
+                trk_confidence.append(trk_one)
+
+
+        # save the resultant files
+        _det_file = detection_results / '{}.txt'.format(_name_seq)
+        with open(str(_det_file), 'w') as f:
+            for m in range(len(object_types)):
+                cla = object_types[m]
+                confid_bg  = det_confidence[m][0]
+                confid_car = det_confidence[m][1]
+                confid_ped = det_confidence[m][2]
+                confid_cyc = det_confidence[m][3]
+                f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
+
+        _trk_file = tracking_results / '{}.txt'.format(_name_seq)
+        with open(str(_trk_file), 'w') as f:
+            for m in range(len(object_types)):
+                cla = object_types[m]
+                confid_bg  = trk_confidence[m][0]
+                confid_car = trk_confidence[m][1]
+                confid_ped = trk_confidence[m][2]
+                confid_cyc = trk_confidence[m][3]
+                f.write('%s,%.4f,%.4f,%.4f,%.4f\n'%(cla, confid_bg, confid_car, confid_ped, confid_cyc))
+
+
 def save_detection_tracking_multi_phases(dataset_root='/home/ben/Dataset/KITTI',
                                          ):
 
@@ -203,7 +313,6 @@ def save_detection_tracking_multi_phases(dataset_root='/home/ben/Dataset/KITTI',
 
 
 def _save_detection_tracking_without_detection(config_path, dataset_path):
-    #
     tracklet_path = dataset_path / 'tracklets_pc'
     all_seqs = list(tracklet_path.glob('seq_*'))
 
@@ -241,7 +350,7 @@ def _save_detection_tracking_without_detection(config_path, dataset_path):
         previous_num_points = 0
         max_num_points = 0
         ratio = 0.16
-        start_frame_count = 16
+        start_frame_count = 3
         _count_ = 0
         for one_id in all_frame_ids:
             # adding the order checking, make sure that sequence order is right
